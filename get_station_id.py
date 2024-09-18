@@ -2,34 +2,31 @@ import requests
 import os
 from dotenv import load_dotenv
 
-# Load .env file with your API key and wallet address
+# Load .env file with your API key
 load_dotenv()
 
-# Get the API key and wallet address from the environment variables
+# Get the API key from the environment variables
 API_KEY = os.getenv('WEATHERXM_API_KEY')
-WALLET_ADDRESS = os.getenv('WALLET_ADDRESS')
 
-# Base URL for retrieving station information
-BASE_URL = "https://api.weatherxm.com/v1/stations"
+# Debugging: Print the API key to verify it is loaded
+print(f"API Key: {API_KEY}")
+
+# New URL for retrieving devices
+BASE_URL = "https://api.weatherxm.com/api/v1/me/devices"
 
 headers = {
     'Authorization': f'Bearer {API_KEY}',
     'Accept': 'application/json'
 }
 
-# Add the wallet address as a parameter to get stations linked to it
-params = {
-    'wallet': WALLET_ADDRESS
-}
-
-# Make the API request to get station information
+# Make the API request to get device information
 try:
-    response = requests.get(BASE_URL, headers=headers, params=params)
+    response = requests.get(BASE_URL, headers=headers)
     response.raise_for_status()
 
-    # Print the station data to find the station ID
-    stations = response.json()
-    print("Stations found:", stations)
+    # Print the device data to find the station ID
+    devices = response.json()
+    print("Devices found:", devices)
 
 except requests.exceptions.HTTPError as http_err:
     print(f"HTTP error occurred: {http_err}")

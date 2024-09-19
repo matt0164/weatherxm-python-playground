@@ -5,7 +5,7 @@
 ## Features
 - **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format.
 - **Device Information**: Get detailed information about your WeatherXM station and devices.
-- **API Key Management**: Automatically fetch and manage your WeatherXM API key.
+- **API Key Management**: Automatically fetch and manage your WeatherXM API key. [PLEASE NOTE THE AUTOMATED KEY EXTRACTION FEATURES ARE NOT YET AVAILABLE]
 - **Unit Settings**: Customize units for temperature (Celsius/Fahrenheit), wind speed (m/s or mph), precipitation (mm or inches), and pressure (hPa or mb).
 - **User-friendly configuration**: Easily update settings like username, password, device ID, and API key through interactive prompts.
 

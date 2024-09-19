@@ -9,7 +9,7 @@ from settings import get_units  # Import the unit settings
 load_dotenv()
 
 # Get the WeatherXM API key and device ID from the environment variables
-API_KEY = os.getenv('WEATHERXM_API_KEY').strip("'")  # Strip the quotes if any
+API_KEY = os.getenv('WXM_API_KEY').strip("'")  # Consistent with .env
 DEVICE_ID = os.getenv('DEVICE_ID').strip("'")
 
 # Function to prompt user for date range or number of days of history
@@ -27,7 +27,7 @@ def get_date_range():
         start_date_str = start_date.strftime('%Y-%m-%d')
         end_date_str = end_date.strftime('%Y-%m-%d')
     else:
-        # Default to 1 day history
+        # Default to 1-day history
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=1)
         start_date_str = start_date.strftime('%Y-%m-%d')
@@ -96,11 +96,11 @@ try:
         for hourly_data in day['hourly']:
             record = [
                 format_timestamp(hourly_data.get('timestamp')),
-                convert_temperature(hourly_data.get('temperature'), temperature_unit),
-                hourly_data.get('humidity'),
-                convert_wind_speed(hourly_data.get('wind_speed'), wind_speed_unit),
-                convert_precipitation(hourly_data.get('precipitation'), precipitation_unit),
-                convert_pressure(hourly_data.get('pressure'), pressure_unit)
+                convert_temperature(hourly_data.get('temperature') or 0, temperature_unit),
+                hourly_data.get('humidity') or 0,
+                convert_wind_speed(hourly_data.get('wind_speed') or 0, wind_speed_unit),
+                convert_precipitation(hourly_data.get('precipitation') or 0, precipitation_unit),
+                convert_pressure(hourly_data.get('pressure') or 0, pressure_unit)
             ]
             weather_records.append(record)
 

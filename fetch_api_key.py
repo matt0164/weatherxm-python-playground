@@ -12,6 +12,10 @@ load_dotenv()
 USERNAME = os.getenv('WXM_USERNAME')  # or hardcode it like: "your_email_here"
 PASSWORD = os.getenv('WXM_PASSWORD')  # or hardcode it like: "your_password_here"
 
+# Check if username and password are provided
+if not USERNAME or not PASSWORD:
+    raise EnvironmentError("Missing WeatherXM username or password. Please check your .env file.")
+
 # URL to log in and get the API key
 LOGIN_URL = "https://api.weatherxm.com/api/v1/auth/login"
 
@@ -29,6 +33,7 @@ headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
 }
+
 
 # Function to extract and format the expiration date from the JWT token
 def get_token_expiration(token):
@@ -48,6 +53,7 @@ def get_token_expiration(token):
         print(f"Error decoding token: {e}")
     return None
 
+
 # Function to update the .env file while preserving other variables and applying appropriate quotes
 def update_env_file(new_api_key, device_id, station_id):
     env_vars = {}
@@ -57,12 +63,13 @@ def update_env_file(new_api_key, device_id, station_id):
         with open('.env', 'r') as file:
             lines = file.readlines()
             for line in lines:
-                key, value = line.strip().split('=', 1)
-                env_vars[key] = value
+                if "=" in line:
+                    key, value = line.strip().split('=', 1)
+                    env_vars[key] = value
 
     # Update or add the specific keys with appropriate quotes
-    env_vars['WEATHERXM_API_KEY'] = f"'{new_api_key}'"
-    env_vars['DEVICE_ID'] = f"'{device_id}'"
+    env_vars['WXM_API_KEY'] = f'"{new_api_key}"'
+    env_vars['DEVICE_ID'] = f'"{device_id}"'
     env_vars['STATION_ID'] = f'"{station_id}"'  # Use double quotes for station ID with spaces
 
     # Write all variables back to the .env file
@@ -71,6 +78,7 @@ def update_env_file(new_api_key, device_id, station_id):
             file.write(f"{key}={value}\n")
 
     print(".env file updated with new API key, device ID, and station ID")
+
 
 # Step 1: Get the API key
 try:
@@ -95,11 +103,15 @@ try:
 
     devices = response.json()
     if devices:
-        # Assuming the first device is the desired one
-        device_id = devices[0]['id']
-        station_id = devices[0]['name']  # Assuming station ID is the same as the station name
-        device_name = devices[0]['name']
-        print(f"Device ID: {device_id} (Device Name: {device_name})")
+        # Prompt user to select a device if there are multiple
+        print("Available devices:")
+        for index, device in enumerate(devices):
+            print(f"{index + 1}: {device['name']} (ID: {device['id']})")
+
+        selected_index = int(input("Select the device by number: ")) - 1
+        device_id = devices[selected_index]['id']
+        station_id = devices[selected_index]['name']
+        print(f"Device ID: {device_id} (Device Name: {station_id})")
 
         # Step 3: Update .env file with API key, device ID, and station ID
         update_env_file(api_key, device_id, station_id)

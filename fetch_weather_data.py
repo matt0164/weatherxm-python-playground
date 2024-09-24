@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from tabulate import tabulate
-from settings import get_units  # Import the unit settings
+from settings import get_units, get_days_history  # Import the unit and days settings
 
 # Load .env file with your API key and device ID
 load_dotenv()
@@ -12,28 +12,12 @@ load_dotenv()
 API_KEY = os.getenv('WXM_API_KEY').strip("'")  # Consistent with .env
 DEVICE_ID = os.getenv('DEVICE_ID').strip("'")
 
-# Function to prompt user for date range or number of days of history
-def get_date_range():
-    use_default = input("Would you like to use the default 1-day history? (yes/no): ").strip().lower()
-    if use_default == 'no':
-        while True:
-            try:
-                num_days = int(input("How many days of history would you like to see? (e.g., 2 for 2 days): ").strip())
-                break
-            except ValueError:
-                print("Invalid input. Please enter a valid number of days.")
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=num_days)
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
-    else:
-        # Default to 1-day history
-        end_date = datetime.utcnow()
-        start_date = end_date - timedelta(days=1)
-        start_date_str = start_date.strftime('%Y-%m-%d')
-        end_date_str = end_date.strftime('%Y-%m-%d')
-
-    return start_date_str, end_date_str
+# Get the number of days of history from the settings
+num_days = get_days_history()  # Ensure this function returns an integer
+end_date = datetime.utcnow()
+start_date = end_date - timedelta(days=num_days)
+start_date_str = start_date.strftime('%Y-%m-%d')
+end_date_str = end_date.strftime('%Y-%m-%d')
 
 # Function to convert ISO 8601 timestamp to a more readable format
 def format_timestamp(iso_timestamp):
@@ -64,9 +48,6 @@ def convert_pressure(pressure_hpa, unit):
 # Get preferred units from settings.py
 temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
 
-# Get the date range from the user
-start_date_str, end_date_str = get_date_range()
-
 # Base URL for the WeatherXM API to fetch device history (measurements)
 BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
 
@@ -94,11 +75,12 @@ try:
     weather_records = []
     for day in data:
         for hourly_data in day['hourly']:
+            wind_speed = convert_wind_speed(hourly_data.get('wind_speed') or 0, wind_speed_unit)
             record = [
                 format_timestamp(hourly_data.get('timestamp')),
                 convert_temperature(hourly_data.get('temperature') or 0, temperature_unit),
                 hourly_data.get('humidity') or 0,
-                convert_wind_speed(hourly_data.get('wind_speed') or 0, wind_speed_unit),
+                wind_speed,
                 convert_precipitation(hourly_data.get('precipitation') or 0, precipitation_unit),
                 convert_pressure(hourly_data.get('pressure') or 0, pressure_unit)
             ]
@@ -117,6 +99,11 @@ try:
     # Display the table in a human-readable format
     print("\nWeather Data:")
     print(tabulate(weather_records, headers=headers, tablefmt="grid"))
+
+    # Display the last wind speed recorded for reference
+    if weather_records:
+        last_wind_speed = weather_records[-1][3]  # Wind speed is the 4th item in the record
+        print(f"Last Wind Speed: {last_wind_speed} {wind_speed_unit}")
 
 except requests.exceptions.HTTPError as http_err:
     print(f"HTTP error occurred: {http_err}")

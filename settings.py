@@ -14,6 +14,8 @@
 # If units are already set (from a previous run), it defaults to the currently set units unless the user
 # chooses to change them.
 
+#in future versions allow users to select days, weeks, months or years of history
+
 import subprocess
 import sys
 import os
@@ -44,7 +46,8 @@ def configure_settings():
         print(f"4. Set Device ID (current: {device_id if device_id else 'Not set'})")
         print(
             f"5. Change units (temperature: {temperature_unit}, wind: {wind_speed_unit}, precipitation: {precipitation_unit}, pressure: {pressure_unit})")
-        print("6. Save and Exit")
+        print("6. Change days of history")
+        print("7. Save and Exit")
 
         # Ask user what they'd like to update
         choice = input("\nEnter the number of the setting you'd like to change: ").strip()
@@ -61,6 +64,15 @@ def configure_settings():
         elif choice == '5':
             configure_units(temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit)
         elif choice == '6':
+            # Change days of history
+            new_days = input("Enter new number of days of history: ").strip()
+            try:
+                new_days = int(new_days)
+                set_days_history(new_days)
+                print(f"Days of history updated to {new_days}.")
+            except ValueError:
+                print("Invalid input. Please enter a valid number.")
+        elif choice == '7':
             # Save changes to .env and exit
             update_env_file(username, password, api_key, device_id, temperature_unit, wind_speed_unit,
                             precipitation_unit, pressure_unit, wallet_address)
@@ -68,6 +80,20 @@ def configure_settings():
             break
         else:
             print("Invalid choice. Please enter a valid number.")
+
+
+# Function to set days of history in the .env file
+def set_days_history(days):
+    # Set the DAYS_OF_HISTORY in the .env file
+    with open('.env', 'r') as file:
+        lines = file.readlines()
+
+    with open('.env', 'w') as file:
+        for line in lines:
+            if line.startswith('DAYS_OF_HISTORY'):
+                file.write(f'DAYS_OF_HISTORY={days}\n')
+            else:
+                file.write(line)
 
 
 # Function to configure the API key (either manually or by fetching a new one)
@@ -123,7 +149,6 @@ def configure_device_id():
             print(f"Error running get_station_id script: {e}")
     else:
         print("Invalid option. Returning to main menu.")
-
 
 
 # Function to configure units (with a submenu)
@@ -201,6 +226,11 @@ def get_units():
     return temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit
 
 
-# Main block to run the configuration setup
+def get_days_history():
+    # Try to read from an environment variable, default to 1 day if not set
+    return int(os.getenv('DAYS_OF_HISTORY', 1))  # Use 1 day as the default
+
+
+# Main script execution
 if __name__ == "__main__":
     configure_settings()

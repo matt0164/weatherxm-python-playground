@@ -14,8 +14,9 @@
 # If units are already set (from a previous run), it defaults to the currently set units unless the user
 # chooses to change them.
 
+import subprocess
+import sys
 import os
-import subprocess  # For running fetch_api_key script
 from dotenv import load_dotenv
 
 # Load .env file with existing environment variables
@@ -109,15 +110,20 @@ def configure_device_id():
         wallet_address = input("Enter your wallet address: ").strip()
         # Fetch device ID using wallet address
         try:
-            subprocess.run(["python", "get_station_id.py"], check=True)  # Adjust path if needed
+            print("Fetching device ID using wallet address...")
+            subprocess.run([sys.executable, "get_station_id.py"], check=True)  # Ensures the correct Python interpreter
             # Reload .env after fetching the device ID
             load_dotenv()
             device_id = os.getenv('DEVICE_ID')
-            print(f"Device ID set: {device_id}")
+            if device_id:
+                print(f"Device ID set: {device_id}")
+            else:
+                print("Failed to retrieve Device ID. Check the wallet address and try again.")
         except subprocess.CalledProcessError as e:
             print(f"Error running get_station_id script: {e}")
     else:
         print("Invalid option. Returning to main menu.")
+
 
 
 # Function to configure units (with a submenu)

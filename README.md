@@ -115,6 +115,12 @@ Contributions are welcome! If you have any feature requests, bug reports, or gen
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
 
+## Support the Project
+If you'd like to support this project by donating WXM tokens, you can send your contributions to the following wallet address:
+
+WXM Token Donations (Arbitrum Network): 0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa
+Alternatively, [click here to donate directly using MetaMask](https://metamask.app.link/send/0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa?chain=arbitrum).
+
 ## Contact
 
 If you have any questions or need assistance, feel free to contact me at `matt0164@outlook.com`.

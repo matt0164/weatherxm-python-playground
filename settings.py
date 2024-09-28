@@ -16,7 +16,7 @@ def get_units():
 
 # Function to configure and update user settings
 def configure_settings():
-    print("Welcome to the WeatherXM configuration setup.")
+    print("Welcome to the WeatherXM Python Playground Configuration Setup.")
 
     # Get current values from .env file
     username = os.getenv('WXM_USERNAME')
@@ -24,6 +24,7 @@ def configure_settings():
     api_key = os.getenv('WXM_API_KEY')
     device_id = os.getenv('DEVICE_ID')
     wallet_address = os.getenv('WALLET_ADDRESS')
+    file_save_location = os.getenv('FILE_SAVE_LOCATION', os.getcwd())  # Default to current working directory
     temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
     hours_of_history = 1  # Default to 1 hour
 
@@ -36,7 +37,9 @@ def configure_settings():
         print(f"4. Set Device ID (current: {device_id if device_id else 'Not set'})")
         print(f"5. Change units (temperature: {temperature_unit}, wind: {wind_speed_unit}, precipitation: {precipitation_unit}, pressure: {pressure_unit})")
         print(f"6. Change history range (current: {hours_of_history} hours)")
-        print("7. Save and Exit")
+        print(f"7. Change file save location (current: {file_save_location})")  # Added file save location option
+        print("8. Run fetch_weather_data script")  # Added option to run fetch_weather_data
+        print("9. Save and Exit")
 
         # Ask user what they'd like to update
         choice = input("\nEnter the number of the setting you'd like to change: ").strip()
@@ -55,7 +58,14 @@ def configure_settings():
                 temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit)
         elif choice == '6':
             hours_of_history = configure_history_range()
-        elif choice == '7':
+        elif choice == '7':  # Add file save location change
+            configure_file_save_location()
+        elif choice == '8':  # Run fetch_weather_data script
+            try:
+                subprocess.run(["python", "fetch_weather_data.py"], check=True)  # Adjust path if needed
+            except subprocess.CalledProcessError as e:
+                print(f"Error running fetch_weather_data script: {e}")
+        elif choice == '9':
             # Save changes to .env and exit
             update_env_file(username, password, api_key, device_id, temperature_unit, wind_speed_unit,
                             precipitation_unit, pressure_unit, wallet_address, hours_of_history)
@@ -63,6 +73,23 @@ def configure_settings():
             break
         else:
             print("Invalid choice. Please enter a valid number.")
+
+def configure_file_save_location():
+    # Get the current file save location from the .env file, if it exists
+    current_location = os.getenv('FILE_SAVE_LOCATION', os.getcwd())  # Default to current working directory
+    print(f"Current file save location: {current_location}")
+
+    # Prompt the user to enter a new file save location or press enter to keep the current location
+    new_location = input("Enter a new file save location (or press Enter to keep the current location): ").strip()
+
+    # Use the entered location if provided, otherwise, keep the current location
+    if new_location:
+        if os.path.isdir(new_location):
+            save_to_env('FILE_SAVE_LOCATION', new_location)
+        else:
+            print(f"Invalid directory: {new_location}. Keeping the current location.")
+    else:
+        print("Keeping the current file save location.")
 
 def configure_history_range():
     print("\nSelect History Range:")
@@ -186,6 +213,28 @@ def configure_units(temp_unit, wind_unit, precip_unit, pressure_unit):
             print("Invalid choice. Returning to units menu.")
 
     return temp_unit, wind_unit, precip_unit, pressure_unit
+
+# Function to update the .env file
+def save_to_env(key, value):
+    """Updates or adds a key-value pair in the .env file."""
+    env_vars = {}
+
+    # Read the existing .env file
+    if os.path.exists('.env'):
+        with open('.env', 'r') as file:
+            lines = file.readlines()
+            for line in lines:
+                if "=" in line:
+                    k, v = line.strip().split('=', 1)
+                    env_vars[k] = v
+
+    # Update or add the specific key with the new value
+    env_vars[key] = f"'{value}'"
+
+    # Write all variables back to the .env file
+    with open('.env', 'w') as file:
+        for k, v in env_vars.items():
+            file.write(f"{k}={v}\n")
 
 # Function to update the .env file while preserving other variables and applying appropriate quotes
 def update_env_file(username, password, api_key, device_id, temp_unit, wind_unit, precip_unit, pressure_unit,

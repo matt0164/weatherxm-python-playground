@@ -22,13 +22,14 @@ def get_hours_history():
         return 1
 
 # Get the number of hours of history
+#`start_date` and `end_date` is timezone-aware (UTC)
 end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
 num_hours = get_hours_history()
 start_date = end_date - timedelta(hours=num_hours)
 today_str = end_date.strftime('%Y-%m-%d')
 
 # Debugging: Print the dates to ensure they're correct
-print(f"Fetching weather data for {today_str}")
+print(f"Fetching weather data for the day {today_str}")
 
 # Function to convert ISO 8601 timestamp to a more readable format
 def format_timestamp(iso_timestamp):

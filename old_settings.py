@@ -6,17 +6,60 @@ from dotenv import load_dotenv
 # Load .env file with existing environment variables
 load_dotenv()
 
-# Function to get current units from the environment variables
+# Function to fetch preferred units from the .env file, with defaults if not present
 def get_units():
-    temperature_unit = os.getenv('TEMP_UNIT', 'C')  # Default to Celsius
-    wind_speed_unit = os.getenv('WIND_UNIT', 'm/s')  # Default to meters per second
-    precipitation_unit = os.getenv('PRECIP_UNIT', 'mm')  # Default to millimeters
-    pressure_unit = os.getenv('PRESSURE_UNIT', 'hPa')  # Default to hPa
+    temperature_unit = os.getenv('TEMP_UNIT', 'C').strip("'")
+    wind_speed_unit = os.getenv('WIND_UNIT', 'm/s').strip("'")
+    precipitation_unit = os.getenv('PRECIP_UNIT', 'mm').strip("'")
+    pressure_unit = os.getenv('PRESSURE_UNIT', 'hPa').strip("'")
     return temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit
+
+# Function to get days of history from the .env file
+def get_days_history():
+    return int(os.getenv('DAYS_OF_HISTORY', 1))  # Use 1 day as the default
+
+# Function to update the .env file while preserving other variables
+def update_env_file(username, password, api_key, device_id, temp_unit, wind_unit, precip_unit, pressure_unit,
+                    wallet_address, days_of_history):
+    env_vars = {}
+
+    # Read existing environment variables from .env file
+    if os.path.exists('.env'):
+        with open('.env', 'r') as file:
+            lines = file.readlines()
+            for line in lines:
+                if "=" in line:
+                    key, value = line.strip().split('=', 1)
+                    env_vars[key] = value
+
+    # Update or add the specific keys with appropriate quotes
+    if username:
+        env_vars['WXM_USERNAME'] = f"'{username}'"
+    if password:
+        env_vars['WXM_PASSWORD'] = f"'{password}'"
+    if api_key:
+        env_vars['WXM_API_KEY'] = f"'{api_key}'"
+    if device_id:
+        env_vars['DEVICE_ID'] = f"'{device_id}'"
+    if wallet_address:
+        env_vars['WALLET_ADDRESS'] = f"'{wallet_address}'"
+    env_vars['TEMP_UNIT'] = f"'{temp_unit}'"
+    env_vars['WIND_UNIT'] = f"'{wind_unit}'"
+    env_vars['PRECIP_UNIT'] = f"'{precip_unit}'"
+    env_vars['PRESSURE_UNIT'] = f"'{pressure_unit}'"
+    env_vars['DAYS_OF_HISTORY'] = f"'{days_of_history}'"  # Add days_of_history
+
+    # Write all variables back to the .env file
+    with open('.env', 'w') as file:
+        for key, value in env_vars.items():
+            file.write(f"{key}={value}\n")
+
+    print(".env file updated with your settings.")
 
 # Function to configure and update user settings
 def configure_settings():
     print("Welcome to the WeatherXM configuration setup.")
+    days_of_history = get_days_history()
 
     # Get current values from .env file
     username = os.getenv('WXM_USERNAME')
@@ -25,7 +68,6 @@ def configure_settings():
     device_id = os.getenv('DEVICE_ID')
     wallet_address = os.getenv('WALLET_ADDRESS')
     temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
-    hours_of_history = 1  # Default to 1 hour
 
     while True:
         # List options for user to change
@@ -35,7 +77,7 @@ def configure_settings():
         print(f"3. Set API key (current: {api_key if api_key else 'Not set'})")
         print(f"4. Set Device ID (current: {device_id if device_id else 'Not set'})")
         print(f"5. Change units (temperature: {temperature_unit}, wind: {wind_speed_unit}, precipitation: {precipitation_unit}, pressure: {pressure_unit})")
-        print(f"6. Change history range (current: {hours_of_history} hours)")
+        print(f"6. Change history range (current: {days_of_history} days)")
         print("7. Save and Exit")
 
         # Ask user what they'd like to update
@@ -54,11 +96,11 @@ def configure_settings():
             temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = configure_units(
                 temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit)
         elif choice == '6':
-            hours_of_history = configure_history_range()
+            days_of_history = configure_history_range()
         elif choice == '7':
             # Save changes to .env and exit
             update_env_file(username, password, api_key, device_id, temperature_unit, wind_speed_unit,
-                            precipitation_unit, pressure_unit, wallet_address, hours_of_history)
+                             precipitation_unit, pressure_unit, wallet_address, days_of_history)
             print("Settings saved. Exiting configuration.")
             break
         else:
@@ -66,46 +108,39 @@ def configure_settings():
 
 def configure_history_range():
     print("\nSelect History Range:")
-    print("1. Hours")
-    print("2. Days")
-    print("3. Weeks")
-    print("4. Months")
-    print("5. Years")
+    print("1. Days")
+    print("2. Weeks")
+    print("3. Months")
+    print("4. Years")
 
     choice = input("\nEnter the number of the range you'd like to select: ").strip()
-    hours = 1  # Default to 1 hour
 
     if choice == '1':
-        hours = int(input("Enter number of hours: ").strip())
-    elif choice == '2':
         days = int(input("Enter number of days: ").strip())
-        hours = days * 24
-    elif choice == '3':
+    elif choice == '2':
         weeks = int(input("Enter number of weeks: ").strip())
-        hours = weeks * 7 * 24
-    elif choice == '4':
+        days = weeks * 7
+    elif choice == '3':
         months = int(input("Enter number of months: ").strip())
-        hours = months * 30 * 24  # Assuming 30 days in a month
-    elif choice == '5':
+        days = months * 30  # Assuming 30 days in a month
+    elif choice == '4':
         years = int(input("Enter number of years: ").strip())
-        hours = years * 365 * 24
+        days = years * 365
     else:
-        print("Invalid choice. Defaulting to 1 hour.")
+        print("Invalid choice. Returning to main menu.")
+        return get_days_history()
 
-    set_hours_history(hours)  # Save the selected hours to .env
-    return hours
+    # Update the .env file with the new settings
+    set_days_history(days)
+    print(f"History range set to {days} days.")
+    return days  # Return the updated days
 
-# Function to set hours of history in the .env file
-def set_hours_history(hours):
-    with open('.env', 'r') as file:
-        lines = file.readlines()
-
-    with open('.env', 'w') as file:
-        for line in lines:
-            if line.startswith('HOURS_OF_HISTORY'):
-                file.write(f'HOURS_OF_HISTORY={hours}\n')
-            else:
-                file.write(line)
+# Function to set days of history in the .env file
+def set_days_history(days):
+    # Set the DAYS_OF_HISTORY in the .env file
+    update_env_file(username=None, password=None, api_key=None, device_id=None,
+                    temp_unit=None, wind_unit=None, precip_unit=None,
+                    pressure_unit=None, wallet_address=None, days_of_history=days)
 
 # Function to configure the API key (either manually or by fetching a new one)
 def configure_api_key():
@@ -170,57 +205,20 @@ def configure_units(temp_unit, wind_unit, precip_unit, pressure_unit):
         print(f"4. Change pressure unit (current: {pressure_unit})")
         print("5. Go back to main menu")
 
-        choice = input("\nEnter the number of the unit you'd like to change: ").strip()
+        choice = input("\nEnter the number of the setting you'd like to change: ").strip()
 
         if choice == '1':
-            temp_unit = input("Preferred temperature unit? (C or F): ").strip().upper()
+            temp_unit = input("Enter temperature unit (C/F): ").strip().upper()
         elif choice == '2':
-            wind_unit = input("Preferred wind speed unit? (m/s or mph): ").strip().lower()
+            wind_unit = input("Enter wind speed unit (m/s or km/h): ").strip()
         elif choice == '3':
-            precip_unit = input("Preferred precipitation unit? (mm or in): ").strip().lower()
+            precip_unit = input("Enter precipitation unit (mm/in): ").strip()
         elif choice == '4':
-            pressure_unit = input("Preferred pressure unit? (hPa or mb): ").strip().lower()
+            pressure_unit = input("Enter pressure unit (hPa/atm): ").strip()
         elif choice == '5':
-            break
+            return temp_unit, wind_unit, precip_unit, pressure_unit  # Return updated units
         else:
-            print("Invalid choice. Returning to units menu.")
-
-    return temp_unit, wind_unit, precip_unit, pressure_unit
-
-# Function to update the .env file while preserving other variables and applying appropriate quotes
-def update_env_file(username, password, api_key, device_id, temp_unit, wind_unit, precip_unit, pressure_unit,
-                    wallet_address, hours_of_history):
-    env_vars = {}
-
-    # Read existing environment variables from .env file
-    if os.path.exists('.env'):
-        with open('.env', 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                if "=" in line:
-                    key, value = line.strip().split('=', 1)
-                    env_vars[key] = value
-
-    # Update or add the specific keys with appropriate quotes
-    if username:
-        env_vars['WXM_USERNAME'] = f"'{username}'"
-    if password:
-        env_vars['WXM_PASSWORD'] = f"'{password}'"
-    if api_key:
-        env_vars['WXM_API_KEY'] = f"'{api_key}'"
-    if device_id:
-        env_vars['DEVICE_ID'] = f"'{device_id}'"
-    if wallet_address:
-        env_vars['WALLET_ADDRESS'] = f"'{wallet_address}'"
-    env_vars['TEMP_UNIT'] = f"'{temp_unit}'"
-    env_vars['WIND_UNIT'] = f"'{wind_unit}'"
-    env_vars['PRECIP_UNIT'] = f"'{precip_unit}'"
-    env_vars['PRESSURE_UNIT'] = f"'{pressure_unit}'"
-    env_vars['HOURS_OF_HISTORY'] = f"'{hours_of_history}'"
-
-    with open('.env', 'w') as file:
-        for key, value in env_vars.items():
-            file.write(f"{key}={value}\n")
+            print("Invalid choice. Please enter a valid number.")
 
 if __name__ == "__main__":
     configure_settings()

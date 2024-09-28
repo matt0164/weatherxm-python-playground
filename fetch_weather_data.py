@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from tabulate import tabulate
 from settings import get_units
+import subprocess
 
 # Load .env file with your API key and device ID
 load_dotenv()
@@ -11,6 +12,18 @@ load_dotenv()
 # Get the WeatherXM API key and device ID from the environment variables
 API_KEY = os.getenv('WXM_API_KEY').strip("'")
 DEVICE_ID = os.getenv('DEVICE_ID').strip("'")
+
+# Function to fetch new API key
+def fetch_new_api_key():
+    print("Attempting to fetch a new API key...")
+    try:
+        subprocess.run(["python", "fetch_api_key.py"], check=True)
+        load_dotenv()  # Reload the updated .env file after fetching the key
+        global API_KEY
+        API_KEY = os.getenv('WXM_API_KEY').strip("'")
+        print(f"New API key set: {API_KEY}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error fetching new API key: {e}")
 
 # Function to get hours of history from .env file (defaults to 1 hour)
 def get_hours_history():
@@ -77,10 +90,12 @@ params = {
 # Make the API request to get weather data for the day
 try:
     response = requests.get(BASE_URL, headers=headers, params=params)
-    response.raise_for_status() # This will raise an HTTPError if the status code is not 200 (OK)
-    # If the API key is missing or incorrect, the API will return a 401 Unauthorized error.
-    # The raise_for_status() method will catch this error, and the program will jump to the except
-    # requests.exceptions.HTTPError block at line 125, where the error is printed.
+    if response.status_code == 401:  # Unauthorized
+        print("Unauthorized access. Fetching new API key...")
+        fetch_new_api_key()  # Fetch a new API key if unauthorized
+        headers['Authorization'] = f'Bearer {API_KEY}'  # Update the headers with the new API key
+        response = requests.get(BASE_URL, headers=headers, params=params)  # Retry the request
+    response.raise_for_status()
 
     # Parse the JSON response
     data = response.json()

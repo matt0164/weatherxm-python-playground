@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from tabulate import tabulate
 from settings import get_units
+import pandas as pd
 
 # Load .env file with your API key and device ID
 load_dotenv()
@@ -45,6 +46,8 @@ def convert_wind_speed(speed_ms, unit):
     if unit == 'mph':
         return round(speed_ms * 2.23694, 2)
     return round(speed_ms, 2)
+
+terminal_display_limit = 24  # Display max 24 hours in the terminal
 
 def convert_precipitation(precip_mm, unit):
     if unit == 'in':
@@ -114,15 +117,32 @@ try:
     ]
 
     # Display the table in a human-readable format
-    print("\nWeather Data:")
-    print(tabulate(weather_records, headers=headers, tablefmt="grid"))
+    # Check if the number of hours exceeds the terminal display limit
+    if num_hours > terminal_display_limit:
+        print("\nDisplaying the last 24 hours of data in the terminal:")
+        limited_records = weather_records[-terminal_display_limit:]
+        print(tabulate(limited_records, headers=headers, tablefmt="grid"))
 
-    # Display the last wind speed recorded for reference
-    if weather_records:
-        last_wind_speed = weather_records[-1][3]  # Wind speed is the 4th item in the record
-        print(f"Last Wind Speed: {last_wind_speed} {wind_speed_unit}")
+        # Prompt for CSV or Excel download
+        output_method = input(
+            "The data exceeds 24 hours. Would you like to download the full data as CSV or Excel? (enter 'csv', 'excel', or 'no'): ").strip().lower()
+        if output_method == 'csv':
+            save_to_csv(weather_records)
+        elif output_method == 'excel':
+            save_to_excel(weather_records)
+    else:
+        print("\nWeather Data:")
+        print(tabulate(weather_records, headers=headers, tablefmt="grid"))
 
-except requests.exceptions.HTTPError as http_err:
-    print(f"HTTP error occurred: {http_err}")
 except Exception as err:
     print(f"An error occurred: {err}")
+
+def save_to_csv(data):
+    df = pd.DataFrame(data, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+    df.to_csv('weather_data.csv', index=False)
+    print("Data saved as 'weather_data.csv'.")
+
+def save_to_excel(data):
+    df = pd.DataFrame(data, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+    df.to_excel('weather_data.xlsx', index=False)
+    print("Data saved as 'weather_data.xlsx'.")

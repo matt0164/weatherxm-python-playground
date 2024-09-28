@@ -77,7 +77,10 @@ params = {
 # Make the API request to get weather data for the day
 try:
     response = requests.get(BASE_URL, headers=headers, params=params)
-    response.raise_for_status()
+    response.raise_for_status() # This will raise an HTTPError if the status code is not 200 (OK)
+    # If the API key is missing or incorrect, the API will return a 401 Unauthorized error.
+    # The raise_for_status() method will catch this error, and the program will jump to the except
+    # requests.exceptions.HTTPError block at line 125, where the error is printed.
 
     # Parse the JSON response
     data = response.json()

@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from tabulate import tabulate
 from settings import get_units
+import subprocess
+from rerun_weather_prompt import prompt_rerun
 
 # Load .env file with your API key and device ID
 load_dotenv()
@@ -11,6 +13,18 @@ load_dotenv()
 # Get the WeatherXM API key and device ID from the environment variables
 API_KEY = os.getenv('WXM_API_KEY').strip("'")
 DEVICE_ID = os.getenv('DEVICE_ID').strip("'")
+
+# Function to fetch new API key
+def fetch_new_api_key():
+    print("Attempting to fetch a new API key...")
+    try:
+        subprocess.run(["python", "fetch_api_key.py"], check=True)
+        load_dotenv()  # Reload the updated .env file after fetching the key
+        global API_KEY
+        API_KEY = os.getenv('WXM_API_KEY').strip("'")
+        print(f"New API key set: {API_KEY}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error fetching new API key: {e}")
 
 # Function to get hours of history from .env file (defaults to 1 hour)
 def get_hours_history():
@@ -22,14 +36,13 @@ def get_hours_history():
         return 1
 
 # Get the number of hours of history
-#`start_date` and `end_date` is timezone-aware (UTC)
 end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
 num_hours = get_hours_history()
 start_date = end_date - timedelta(hours=num_hours)
 today_str = end_date.strftime('%Y-%m-%d')
 
 # Debugging: Print the dates to ensure they're correct
-print(f"Fetching weather data for the day {today_str}")
+print(f"Fetching weather data for {today_str}")
 
 # Function to convert ISO 8601 timestamp to a more readable format
 def format_timestamp(iso_timestamp):
@@ -75,9 +88,26 @@ params = {
     'toDate': today_str
 }
 
+#accept num_hours as an argument, so it can be called again with a new time period from the rerun prompt.
+def fetch_weather_data(num_hours=None):
+    if num_hours is None:
+        num_hours = get_hours_history()  # Default to the existing method to get hours
+
+
+    # The rest of the logic to fetch data using num_hours remains the same
+    end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+    start_date = end_date - timedelta(hours=num_hours)
+    today_str = end_date.strftime('%Y-%m-%d')
+
+# API call and data processing logic here...
 # Make the API request to get weather data for the day
 try:
     response = requests.get(BASE_URL, headers=headers, params=params)
+    if response.status_code == 401:  # Unauthorized
+        print("Unauthorized access. Fetching new API key...")
+        fetch_new_api_key()  # Fetch a new API key if unauthorized
+        headers['Authorization'] = f'Bearer {API_KEY}'  # Update the headers with the new API key
+        response = requests.get(BASE_URL, headers=headers, params=params)  # Retry the request
     response.raise_for_status()
 
     # Parse the JSON response
@@ -115,10 +145,9 @@ try:
     print("\nWeather Data:")
     print(tabulate(weather_records, headers=headers, tablefmt="grid"))
 
-    # Display the last wind speed recorded for reference
-    if weather_records:
-        last_wind_speed = weather_records[-1][3]  # Wind speed is the 4th item in the record
-        print(f"Last Wind Speed: {last_wind_speed} {wind_speed_unit}")
+    # After displaying the weather data
+    # Ask if the user wants to rerun the weather script
+    prompt_rerun(fetch_weather_data)
 
 except requests.exceptions.HTTPError as http_err:
     print(f"HTTP error occurred: {http_err}")

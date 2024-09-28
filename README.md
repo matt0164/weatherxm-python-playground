@@ -3,11 +3,17 @@
 **WeatherXM Python Playground** is an open-source project designed to interact with WeatherXM's API. It allows users to fetch real-time weather data, retrieve device information, and manage their API keys. The project also includes functionality to configure units for temperature, wind speed, precipitation, and pressure, making it flexible for various use cases.
 
 ## Features
-- **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format.
+- **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format. Automatically re-runs the script with user-defined parameters.
 - **Device Information**: Get detailed information about your WeatherXM station and devices.
-- **API Key Management**: Automatically fetch and manage your WeatherXM API key. [PLEASE NOTE THE AUTOMATED KEY EXTRACTION FEATURES ARE NOT YET AVAILABLE]
+- **API Key Management**: Automatically fetch and manage your WeatherXM API key, with automatic re-fetching if unauthorized.
 - **Unit Settings**: Customize units for temperature (Celsius/Fahrenheit), wind speed (m/s or mph), precipitation (mm or inches), and pressure (hPa or mb).
-- **User-friendly configuration**: Easily update settings like username, password, device ID, and API key through interactive prompts.
+- **User-friendly Configuration**: Easily update settings like username, password, device ID, and API key through interactive prompts.
+
+## New Features and Bug Fixes (Added 2024-09-28)
+- **Rerun Option**: After fetching weather data, users are prompted to rerun the script with a custom time period or exit.
+- **Dynamic Time Period Selection**: Users can specify a custom number of hours for weather data retrieval.
+- **Automatic API Key Fetching**: If the API key is missing or unauthorized, the script will automatically attempt to fetch a new key without manual intervention.
+- **Bug Fixes**: Improved error handling for invalid API keys and fixed issues with time period customization during reruns.
 
 ## Installation
 
@@ -18,7 +24,6 @@ To set up this project locally, follow these steps:
 ```bash
 git clone https://github.com/[YourUsername]/weatherxm-python-playground.git
 cd weatherxm-python-playground
-```
 
 ### 2. Create and Activate Virtual Environment
 
@@ -53,12 +58,20 @@ Create a `.env` file in the project root directory. This file will hold your Wea
 
 Example `.env` file:
 ```env
-WXM_USERNAME="your_email_here"
-WXM_PASSWORD="your_password_here"
-WXM_API_KEY="your_api_key_here"
-DEVICE_ID="your_device_id_here"
-STATION_ID="your_station_id_here"
-WALLET_ADDRESS="your_wallet_address_here"
+TEMPERATURE_UNIT=C # gets updated from settings.py
+WIND_SPEED_UNIT=m/s # gets updated from settings.py
+PRECIPITATION_UNIT=mm # gets updated from settings.py
+PRESSURE_UNIT='mb'
+WXM_API_KEY="your_api_key"
+WXM_USERNAME='youremail@domain.com'
+WXM_PASSWORD='yourpasswordshouldalwaysbeasecret!'
+DEVICE_ID="5f96e380-1c7c-11ed-9972-4f669f2d96bd"
+TEMP_UNIT='F'
+WIND_UNIT='mph'
+PRECIP_UNIT='in'
+STATION_ID="Expert Pecan Twister"
+DAYS_OF_HISTORY='1'
+HOURS_OF_HISTORY='3'
 ```
 
 These values will be automatically updated as you interact with the configuration script.

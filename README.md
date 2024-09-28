@@ -12,8 +12,33 @@
 ## New Features and Bug Fixes (Added 2024-09-28)
 - **Rerun Option**: After fetching weather data, users are prompted to rerun the script with a custom time period or exit.
 - **Dynamic Time Period Selection**: Users can specify a custom number of hours for weather data retrieval.
+- **Output Method Configuration**: Users can choose to display weather data in the terminal or save it as CSV or Excel.
+- **File Save Location**: Users can specify the file save location through the settings menu.
 - **Automatic API Key Fetching**: If the API key is missing or unauthorized, the script will automatically attempt to fetch a new key without manual intervention.
-- **Bug Fixes**: Improved error handling for invalid API keys and fixed issues with time period customization during reruns.
+- **Default Weather Data**: The program will ask users if they want to run the fetch weather script from the settings.
+- **Test Weather History Duration**: Users can select different time durations for fetching weather history.
+
+### Bug Fixes
+- Improved error handling for API requests.
+- Corrected data extraction from the API response.
+- Fixed output formatting issues in the terminal and CSV/Excel files.
+
+## Pending Items
+
+### Feature Roadmap
+1. **Default Weather Data**: 
+   - **Status**: Pending
+   - **Description**: Ask the user if they want to run the fetch weather script from settings and prompt the user for the time period each time it runs.
+
+2. **Test Weather History Duration**: 
+   - **Status**: Pending
+   - **Description**: Allow users to select days, weeks, months, or years of weather history and set defaults.
+
+---
+
+### Note
+- Further enhancements will continue to improve user experience and functionality.
+
 
 ## Installation
 

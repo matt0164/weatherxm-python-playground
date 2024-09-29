@@ -7,6 +7,26 @@ from settings import get_units
 import subprocess
 from rerun_weather_prompt import prompt_rerun
 import sys
+import pandas as pd  # Ensure pandas is imported
+
+# Ensure SAVE_LOCATION is loaded correctly and set a default if not found
+def get_save_location():
+    return os.getenv('FILE_SAVE_LOCATION', os.getcwd())  # Default to current directory if not set
+
+SAVE_LOCATION = get_save_location()  # Set the file save location
+
+def save_to_csv(data):
+    df = pd.DataFrame(data, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+    file_path = os.path.join(SAVE_LOCATION, 'weather_data.csv')  # Save in the specified directory
+    df.to_csv(file_path, index=False)
+    print(f"Data saved as 'weather_data.csv' at {file_path}.")
+
+# Function to save data as Excel
+def save_to_excel(data):
+    df = pd.DataFrame(data, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+    file_path = os.path.join(SAVE_LOCATION, 'weather_data.xlsx')  # Save in the specified directory
+    df.to_excel(file_path, index=False)
+    print(f"Data saved as 'weather_data.xlsx' at {file_path}.")
 
 # Load .env file with your API key and device ID
 load_dotenv()
@@ -47,6 +67,8 @@ def convert_wind_speed(speed_ms, unit):
         return round(speed_ms * 2.23694, 2)
     return round(speed_ms, 2)
 
+terminal_display_limit = 24  # Display max 24 hours in the terminal
+
 def convert_precipitation(precip_mm, unit):
     if unit == 'in':
         return round(precip_mm / 25.4, 2)
@@ -67,62 +89,31 @@ def fetch_weather_data(num_hours=None):
     if num_hours is None:
         num_hours = get_hours_history()  # Default to the existing method to get hours
 
-    # Calculate time range
-    end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
-    start_date = end_date - timedelta(hours=num_hours)
-    today_str = end_date.strftime('%Y-%m-%d')
+    all_weather_records = []  # Initialize at the start of the function
 
-    # Get preferred units from settings.py
-    temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
+    # Calculate number of requests needed based on terminal display limit
+    num_requests = (num_hours + terminal_display_limit - 1) // terminal_display_limit  # Ceiling division
 
-    # Base URL for the WeatherXM API to fetch device history (measurements)
-    BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
+    for request_num in range(num_requests):
+        current_hours = min(terminal_display_limit, num_hours - (request_num * terminal_display_limit))
+        end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+        start_date = end_date - timedelta(hours=current_hours)
+        today_str = end_date.strftime('%Y-%m-%d')
 
-    # Set up headers for the API request
-    headers = {
-        'Authorization': f'Bearer {API_KEY}',
-        'Accept': 'application/json'
-    }
+        # Get preferred units from settings.py
+        temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
 
-    # Set up query parameters with only the date
-    params = {
-        'fromDate': today_str,
-        'toDate': today_str
-    }
+        # Base URL for the WeatherXM API to fetch device history (measurements)
+        BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
 
-    # Make the API request to get weather data for the day
-    try:
-        response = requests.get(BASE_URL, headers=headers, params=params)
-        if response.status_code == 401:  # Unauthorized
-            print("Unauthorized access. Fetching new API key...")
-            fetch_new_api_key()  # Fetch a new API key if unauthorized
-            headers['Authorization'] = f'Bearer {API_KEY}'  # Update the headers with the new API key
-            response = requests.get(BASE_URL, headers=headers, params=params)  # Retry the request
-        response.raise_for_status()
-
-        # Parse the JSON response
-        data = response.json()
-
-        # Extract hourly weather data from the response
-        weather_records = []
-        for day in data:
-            for hourly_data in day['hourly']:
-                # Filter only the records that are within the last few hours
-                record_timestamp = datetime.strptime(hourly_data.get('timestamp'), "%Y-%m-%dT%H:%M:%S%z")
-                if start_date <= record_timestamp <= end_date:
-                    wind_speed = convert_wind_speed(hourly_data.get('wind_speed') or 0, wind_speed_unit)
-                    record = [
-                        format_timestamp(hourly_data.get('timestamp')),
-                        convert_temperature(hourly_data.get('temperature') or 0, temperature_unit),
-                        hourly_data.get('humidity') or 0,
-                        wind_speed,
-                        convert_precipitation(hourly_data.get('precipitation') or 0, precipitation_unit),
-                        convert_pressure(hourly_data.get('pressure') or 0, pressure_unit)
-                    ]
-                    weather_records.append(record)
+        # Set up headers for the API request
+        api_headers = {
+            'Authorization': f'Bearer {API_KEY}',
+            'Accept': 'application/json'
+        }
 
         # Define the table headers with preferred units
-        table_headers = [
+        headers = [
             "Timestamp",
             f"Temperature ({temperature_unit})",
             "Humidity (%)",
@@ -131,18 +122,72 @@ def fetch_weather_data(num_hours=None):
             f"Pressure ({pressure_unit})"
         ]
 
-        # Display the table in a human-readable format
+        # Set up query parameters with only the date
+        params = {
+            'fromDate': today_str,
+            'toDate': today_str
+        }
+
+        # Make the API request to get weather data for the day
+        try:
+            response = requests.get(BASE_URL, headers=api_headers, params=params)
+            response.raise_for_status()  # This will raise an HTTPError if the status code is not 200 (OK)
+
+            # Parse the JSON response
+            data = response.json()
+
+            # Extract hourly weather data from the response
+            weather_records = []
+            for day in data:
+                hourly_data_list = day.get('hourly', [])
+                if isinstance(hourly_data_list, list):
+                    for hourly_data in hourly_data_list:
+                        timestamp = hourly_data.get('timestamp')
+                        if timestamp:
+                            record_timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
+                            if start_date <= record_timestamp <= end_date:
+                                wind_speed = convert_wind_speed(hourly_data.get('wind_speed', 0), wind_speed_unit)
+                                record = [
+                                    format_timestamp(timestamp),
+                                    convert_temperature(hourly_data.get('temperature', 0), temperature_unit),
+                                    hourly_data.get('humidity', 0),
+                                    wind_speed,
+                                    convert_precipitation(hourly_data.get('precipitation', 0), precipitation_unit),
+                                    convert_pressure(hourly_data.get('pressure', 0), pressure_unit)
+                                ]
+                                weather_records.append(record)
+
+            all_weather_records.extend(weather_records)  # Combine results from each request
+
+        except requests.exceptions.HTTPError as e:
+            print(f"HTTP error occurred: {e}")
+            return
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return
+
+    # Check if the number of hours exceeds the terminal display limit
+    if num_hours > terminal_display_limit:
+        print("\nDisplaying the last 24 hours of data in the terminal:")
+        limited_records = all_weather_records[-terminal_display_limit:]
+        print(tabulate(limited_records, headers=headers, tablefmt="grid"))
+
+        # Prompt for CSV or Excel download
+        output_method = input(
+            "The data exceeds 24 hours. Would you like to download the full data as CSV or Excel? (enter 'csv', 'excel', or 'no'): "
+        ).strip().lower()
+
+        if output_method == 'csv':
+            save_to_csv(all_weather_records)
+        elif output_method == 'excel':
+            save_to_excel(all_weather_records)
+    else:
         print("\nWeather Data:")
-        print(tabulate(weather_records, headers=table_headers, tablefmt="grid"))
+        print(tabulate(all_weather_records, headers=headers, tablefmt="grid"))
 
-        # After displaying the weather data
-        # Ask if the user wants to rerun the weather script
-        prompt_rerun(fetch_weather_data)
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        print(f"An error occurred: {err}")
+    # After displaying the weather data
+    # Ask if the user wants to rerun the weather script
+    prompt_rerun(fetch_weather_data)
 
 # Start the first fetch
 fetch_weather_data()

@@ -129,42 +129,50 @@ def fetch_weather_data(num_hours=None):
         }
 
         # Make the API request to get weather data for the day
-        try:
-            response = requests.get(BASE_URL, headers=api_headers, params=params)
-            response.raise_for_status()  # This will raise an HTTPError if the status code is not 200 (OK)
+        while True:  # Start of the retry loop
+            try:
+                response = requests.get(BASE_URL, headers=api_headers, params=params)
+                response.raise_for_status()  # This will raise an HTTPError if the status code is not 200 (OK)
 
-            # Parse the JSON response
-            data = response.json()
+                # Parse the JSON response
+                data = response.json()
 
-            # Extract hourly weather data from the response
-            weather_records = []
-            for day in data:
-                hourly_data_list = day.get('hourly', [])
-                if isinstance(hourly_data_list, list):
-                    for hourly_data in hourly_data_list:
-                        timestamp = hourly_data.get('timestamp')
-                        if timestamp:
-                            record_timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
-                            if start_date <= record_timestamp <= end_date:
-                                wind_speed = convert_wind_speed(hourly_data.get('wind_speed', 0), wind_speed_unit)
-                                record = [
-                                    format_timestamp(timestamp),
-                                    convert_temperature(hourly_data.get('temperature', 0), temperature_unit),
-                                    hourly_data.get('humidity', 0),
-                                    wind_speed,
-                                    convert_precipitation(hourly_data.get('precipitation', 0), precipitation_unit),
-                                    convert_pressure(hourly_data.get('pressure', 0), pressure_unit)
-                                ]
-                                weather_records.append(record)
+                # Extract hourly weather data from the response
+                weather_records = []
+                for day in data:
+                    hourly_data_list = day.get('hourly', [])
+                    if isinstance(hourly_data_list, list):
+                        for hourly_data in hourly_data_list:
+                            timestamp = hourly_data.get('timestamp')
+                            if timestamp:
+                                record_timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
+                                if start_date <= record_timestamp <= end_date:
+                                    wind_speed = convert_wind_speed(hourly_data.get('wind_speed', 0), wind_speed_unit)
+                                    record = [
+                                        format_timestamp(timestamp),
+                                        convert_temperature(hourly_data.get('temperature', 0), temperature_unit),
+                                        hourly_data.get('humidity', 0),
+                                        wind_speed,
+                                        convert_precipitation(hourly_data.get('precipitation', 0), precipitation_unit),
+                                        convert_pressure(hourly_data.get('pressure', 0), pressure_unit)
+                                    ]
+                                    weather_records.append(record)
 
-            all_weather_records.extend(weather_records)  # Combine results from each request
+                all_weather_records.extend(weather_records)  # Combine results from each request
+                break  # Exit the loop if the request was successful
 
-        except requests.exceptions.HTTPError as e:
-            print(f"HTTP error occurred: {e}")
-            return
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return
+            except requests.exceptions.HTTPError as http_err:
+                if response.status_code == 401:  # If it's a 401 error
+                    print("Unauthorized access. Fetching new API key...")
+                    fetch_new_api_key()  # Fetch a new API key if unauthorized
+                    api_headers['Authorization'] = f'Bearer {API_KEY}'  # Update the headers with the new API key
+                    continue  # Retry the request with the new API key
+                else:
+                    print(f"HTTP error occurred: {http_err}")
+                    break  # Exit the loop for other HTTP errors
+            except Exception as err:
+                print(f"An error occurred: {err}")
+                break  # Exit the loop for other exceptions
 
     # Check if the number of hours exceeds the terminal display limit
     if num_hours > terminal_display_limit:

@@ -162,3 +162,7 @@ cython_debug/
 #.idea/
 
 .idea/
+
+old_fetch_weather_data.py
+
+old_settings.py

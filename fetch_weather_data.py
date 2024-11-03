@@ -6,7 +6,6 @@ from tabulate import tabulate
 from settings import get_units
 import subprocess
 from rerun_weather_prompt import prompt_rerun
-import sys
 import pandas as pd  # Ensure pandas is imported
 
 # Ensure SAVE_LOCATION is loaded correctly and set a default if not found
@@ -67,8 +66,6 @@ def convert_wind_speed(speed_ms, unit):
         return round(speed_ms * 2.23694, 2)
     return round(speed_ms, 2)
 
-terminal_display_limit = 24  # Display max 24 hours in the terminal
-
 def convert_precipitation(precip_mm, unit):
     if unit == 'in':
         return round(precip_mm / 25.4, 2)
@@ -91,14 +88,25 @@ def fetch_weather_data(num_hours=None):
 
     all_weather_records = []  # Initialize at the start of the function
 
-    # Calculate number of requests needed based on terminal display limit
-    num_requests = (num_hours + terminal_display_limit - 1) // terminal_display_limit  # Ceiling division
+    # Calculate number of requests needed based on API limits
+    max_api_hours = 24  # API limitation
+    num_requests = (num_hours + max_api_hours - 1) // max_api_hours  # Ceiling division
 
+    # Fetch data for each requested segment
     for request_num in range(num_requests):
-        current_hours = min(terminal_display_limit, num_hours - (request_num * terminal_display_limit))
+        current_hours = min(max_api_hours, num_hours - (request_num * max_api_hours))
+
+        # Calculate the end date and start date for the current request
         end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
         start_date = end_date - timedelta(hours=current_hours)
-        today_str = end_date.strftime('%Y-%m-%d')
+
+        # Set the params for the API request
+        params = {
+            'fromDate': start_date.isoformat(),
+            'toDate': end_date.isoformat()
+        }
+
+        print(f"Fetching data from {params['fromDate']} to {params['toDate']}")
 
         # Get preferred units from settings.py
         temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
@@ -112,23 +120,6 @@ def fetch_weather_data(num_hours=None):
             'Accept': 'application/json'
         }
 
-        # Define the table headers with preferred units
-        headers = [
-            "Timestamp",
-            f"Temperature ({temperature_unit})",
-            "Humidity (%)",
-            f"Wind Speed ({wind_speed_unit})",
-            f"Precipitation ({precipitation_unit})",
-            f"Pressure ({pressure_unit})"
-        ]
-
-        # Set up query parameters with only the date
-        params = {
-            'fromDate': today_str,
-            'toDate': today_str
-        }
-
-        # Make the API request to get weather data for the day
         while True:  # Start of the retry loop
             try:
                 response = requests.get(BASE_URL, headers=api_headers, params=params)
@@ -174,24 +165,26 @@ def fetch_weather_data(num_hours=None):
                 print(f"An error occurred: {err}")
                 break  # Exit the loop for other exceptions
 
-    # Check if the number of hours exceeds the terminal display limit
-    if num_hours > terminal_display_limit:
-        print("\nDisplaying the last 24 hours of data in the terminal:")
-        limited_records = all_weather_records[-terminal_display_limit:]
-        print(tabulate(limited_records, headers=headers, tablefmt="grid"))
+    # Display all fetched data in the terminal
+    print("\nWeather Data:")
+    print(tabulate(all_weather_records, headers=[
+        "Timestamp",
+        f"Temperature ({temperature_unit})",
+        "Humidity (%)",
+        f"Wind Speed ({wind_speed_unit})",
+        f"Precipitation ({precipitation_unit})",
+        f"Pressure ({pressure_unit})"
+    ], tablefmt="grid"))
 
-        # Prompt for CSV or Excel download
-        output_method = input(
-            "The data exceeds 24 hours. Would you like to download the full data as CSV or Excel? (enter 'csv', 'excel', or 'no'): "
-        ).strip().lower()
+    # Prompt for CSV or Excel download
+    output_method = input(
+        "Would you like to download the full data as CSV or Excel? (enter 'csv', 'excel', or 'no'): "
+    ).strip().lower()
 
-        if output_method == 'csv':
-            save_to_csv(all_weather_records)
-        elif output_method == 'excel':
-            save_to_excel(all_weather_records)
-    else:
-        print("\nWeather Data:")
-        print(tabulate(all_weather_records, headers=headers, tablefmt="grid"))
+    if output_method == 'csv':
+        save_to_csv(all_weather_records)
+    elif output_method == 'excel':
+        save_to_excel(all_weather_records)
 
     # After displaying the weather data
     # Ask if the user wants to rerun the weather script

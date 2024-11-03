@@ -92,12 +92,14 @@ def fetch_weather_data(num_hours=None):
     max_api_hours = 24  # API limitation
     num_requests = (num_hours + max_api_hours - 1) // max_api_hours  # Ceiling division
 
+    # Set the initial end date
+    end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+
     # Fetch data for each requested segment
     for request_num in range(num_requests):
         current_hours = min(max_api_hours, num_hours - (request_num * max_api_hours))
 
-        # Calculate the end date and start date for the current request
-        end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+        # Calculate the start date for the current request
         start_date = end_date - timedelta(hours=current_hours)
 
         # Set the params for the API request
@@ -107,6 +109,9 @@ def fetch_weather_data(num_hours=None):
         }
 
         print(f"Fetching data from {params['fromDate']} to {params['toDate']}")
+
+        # Update the end_date for the next iteration
+        end_date = start_date
 
         # Get preferred units from settings.py
         temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()

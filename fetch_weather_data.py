@@ -130,6 +130,9 @@ def fetch_weather_data(num_hours=None):
                 response = requests.get(BASE_URL, headers=api_headers, params=params)
                 response.raise_for_status()  # This will raise an HTTPError if the status code is not 200 (OK)
 
+                # Debug: Print raw response
+                print("Raw API response:", response.text)
+
                 # Parse the JSON response
                 data = response.json()
 

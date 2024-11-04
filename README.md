@@ -9,6 +9,10 @@
 - **Unit Settings**: Customize units for temperature (Celsius/Fahrenheit), wind speed (m/s or mph), precipitation (mm or inches), and pressure (hPa or mb).
 - **User-friendly Configuration**: Easily update settings like username, password, device ID, and API key through interactive prompts.
 
+## Bug Fixes (Added 2024-11-04)
+- **24 Hours Bug**: Corrected bug which would prevent users from retreiving more than 48 hours of data
+- **Sort Bug**: Corrected bug to sort data in decending date (most recent first)
+  
 ## New Features and Bug Fixes (Added 2024-09-28)
 - **Rerun Option**: After fetching weather data, users are prompted to rerun the script with a custom time period or exit.
 - **Dynamic Time Period Selection**: Users can specify a custom number of hours for weather data retrieval.

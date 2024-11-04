@@ -48,7 +48,8 @@ def fetch_new_api_key():
 
 # Function to get hours of history from .env file (defaults to 1 hour)
 def get_hours_history():
-    hours = os.getenv('HOURS_OF_HISTORY', '1')
+    hours = os.getenv('HOURS_OF_HISTORY', '1') #gets hours of history from .env
+    print(f"hours of history from .env: {hours}") #prints hours of history to confirm correct
     try:
         return int(hours)
     except ValueError:
@@ -85,28 +86,41 @@ def format_timestamp(iso_timestamp):
 def fetch_weather_data(num_hours=None):
     if num_hours is None:
         num_hours = get_hours_history()  # Default to the existing method to get hours
+        print(f"Number of hours: {num_hours}") #prints number of hours as a 2nd check. should match hours from .env
 
     all_weather_records = []  # Initialize at the start of the function
 
+    # Calculate the total number of hours to fetch
+    total_hours = num_hours or get_hours_history()  # Defaults to the number of hours specified or 1 if not set
+
     # Calculate number of requests needed based on API limits
     max_api_hours = 24  # API limitation
-    num_requests = (num_hours + max_api_hours - 1) // max_api_hours  # Ceiling division
+    num_requests = (total_hours + max_api_hours - 1) // max_api_hours  # Ceiling division.
+    #The script calculates how many API requests are needed based on the total hours requested = num_requests
+    print(f"num_requests {num_requests}")
 
-    # Fetch data for each requested segment
+    # Start the end date as the current UTC time
+    end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+
+    # Loop through each 24-hour segment request
     for request_num in range(num_requests):
-        current_hours = min(max_api_hours, num_hours - (request_num * max_api_hours))
+        # Calculate the start and end dates for the current request
+        segment_end_date = end_date - timedelta(hours=request_num * max_api_hours)
+        segment_start_date = segment_end_date - timedelta(hours=max_api_hours)
 
-        # Calculate the end date and start date for the current request
-        end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
-        start_date = end_date - timedelta(hours=current_hours)
+        # Ensure the start date does not go beyond the total requested hours
+        if segment_start_date < end_date - timedelta(hours=total_hours):
+            segment_start_date = end_date - timedelta(hours=total_hours)
 
         # Set the params for the API request
         params = {
-            'fromDate': start_date.isoformat(),
-            'toDate': end_date.isoformat()
+            'fromDate': segment_start_date.isoformat(),
+            'toDate': segment_end_date.isoformat()
         }
 
         print(f"Fetching data from {params['fromDate']} to {params['toDate']}")
+
+        # Fetch data as before (API request, response handling, etc.)
 
         # Get preferred units from settings.py
         temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
@@ -137,7 +151,8 @@ def fetch_weather_data(num_hours=None):
                             timestamp = hourly_data.get('timestamp')
                             if timestamp:
                                 record_timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
-                                if start_date <= record_timestamp <= end_date:
+                                # Use segment_start_date and segment_end_date for validation
+                                if segment_start_date <= record_timestamp <= segment_end_date:
                                     wind_speed = convert_wind_speed(hourly_data.get('wind_speed', 0), wind_speed_unit)
                                     record = [
                                         format_timestamp(timestamp),
@@ -165,7 +180,10 @@ def fetch_weather_data(num_hours=None):
                 print(f"An error occurred: {err}")
                 break  # Exit the loop for other exceptions
 
-    # Display all fetched data in the terminal
+    # Sort all_weather_records by the first column (timestamp) in descending order
+    all_weather_records.sort(key=lambda x: datetime.strptime(x[0], "%B %d, %Y %I:%M %p"), reverse=True)
+
+    # Display sorted data
     print("\nWeather Data:")
     print(tabulate(all_weather_records, headers=[
         "Timestamp",

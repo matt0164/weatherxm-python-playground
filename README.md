@@ -3,6 +3,7 @@
 **WeatherXM Python Playground** is an open-source project designed to interact with WeatherXM's API. It allows users to fetch real-time weather data, retrieve device information, and manage their API keys. The project also includes functionality to configure units for temperature, wind speed, precipitation, and pressure, making it flexible for various use cases.
 
 ## Features
+- **Plot Precip**: New feature to plot precipitation and retreive the data from a saved file (for quicker display). Uses matlab.
 - **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format. Automatically re-runs the script with user-defined parameters.
 - **Device Information**: Get detailed information about your WeatherXM station and devices.
 - **API Key Management**: Automatically fetch and manage your WeatherXM API key, with automatic re-fetching if unauthorized.

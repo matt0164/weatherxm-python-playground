@@ -139,68 +139,10 @@ def fetch_weather_data(num_hours=None):
 
             print(f"Fetching data from {params['fromDate']} to {params['toDate']}")
 
-            # Initialize weather_records for this request
-            weather_records = []  # Ensure this is defined before it's used
-
             # Fetch data as before (API request, response handling, etc.)
-            # Get preferred units from settings.py
-            temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit = get_units()
 
-            # Base URL for the WeatherXM API to fetch device history (measurements)
-            BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
-
-            # Set up headers for the API request
-            api_headers = {
-                'Authorization': f'Bearer {API_KEY}',
-                'Accept': 'application/json'
-            }
-
-            while True:  # Start of the retry loop
-                try:
-                    response = requests.get(BASE_URL, headers=api_headers, params=params)
-                    response.raise_for_status()  # This will raise an HTTPError if the status code is not 200 (OK)
-
-                    # Parse the JSON response
-                    data = response.json()
-
-                    # Extract hourly weather data from the response
-                    for day in data:
-                        hourly_data_list = day.get('hourly', [])
-                        if isinstance(hourly_data_list, list):
-                            for hourly_data in hourly_data_list:
-                                timestamp = hourly_data.get('timestamp')
-                                if timestamp:
-                                    record_timestamp = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S%z")
-                                    if segment_start_date <= record_timestamp <= segment_end_date:
-                                        wind_speed = convert_wind_speed(hourly_data.get('wind_speed', 0), wind_speed_unit)
-                                        record = [
-                                            format_timestamp(timestamp),
-                                            convert_temperature(hourly_data.get('temperature', 0), temperature_unit),
-                                            hourly_data.get('humidity', 0),
-                                            wind_speed,
-                                            convert_precipitation(hourly_data.get('precipitation', 0), precipitation_unit),
-                                            convert_pressure(hourly_data.get('pressure', 0), pressure_unit)
-                                        ]
-                                        weather_records.append(record)
-
-                    all_weather_records.extend(weather_records)  # Combine results from each request
-                    break  # Exit the loop if the request was successful
-
-                except requests.exceptions.HTTPError as http_err:
-                    if response.status_code == 401:  # If it's a 401 error
-                        print("Unauthorized access. Fetching new API key...")
-                        fetch_new_api_key()  # Fetch a new API key if unauthorized
-                        api_headers['Authorization'] = f'Bearer {API_KEY}'  # Update the headers with the new API key
-                        continue  # Retry the request with the new API key
-                    else:
-                        print(f"HTTP error occurred: {http_err}")
-                        break  # Exit the loop for other HTTP errors
-                except Exception as err:
-                    print(f"An error occurred: {err}")
-                    break  # Exit the loop for other exceptions
-
-        # Save the fetched data
-        save_previous_data(all_weather_records)
+            # After fetching, save the data
+            save_previous_data(all_weather_records)
 
     elif load_choice == '2':
         df = load_previous_data()
@@ -210,7 +152,7 @@ def fetch_weather_data(num_hours=None):
             print("No data to visualize. Exiting.")
             return
 
-    # Check if we have any records to process
+    # After data is prepared, check if we have any records to process
     if all_weather_records:
         # Prompt user for how they would like to view or save the weather data
         print("\nHow would you like to handle the weather data?")
@@ -236,45 +178,13 @@ def fetch_weather_data(num_hours=None):
         elif choice == '3':
             save_to_excel(all_weather_records)
         elif choice == '4':
+            if num_hours is None:  # Ensure num_hours is defined before calling
+                num_hours = get_hours_history()  # Set it to default if not defined
             plot_precipitation(all_weather_records, num_hours)  # Call your plotting function
         else:
             print("Invalid choice. Exiting.")
     else:
-        # If no records found, prompt user to load previous data
-        load_choice = input(
-            "No weather records found for the specified period. Would you like to load previous data? (yes/no): ").strip().lower()
-        if load_choice == 'yes':
-            df = load_previous_data()  # Function to load previous data
-            if df is not None and not df.empty:
-                # Convert DataFrame to the format expected for processing
-                all_weather_records = df.values.tolist()
-                # Repeat the menu prompt since we have loaded records
-                print("\nLoaded previous weather data.")
-                # You can choose to display or plot here as well
-                print("\nHow would you like to handle the loaded weather data?")
-                print("1. Display as a table")
-                print("2. Plot data")
-                choice = input("Enter the number of your choice: ").strip()
-                if choice == '1':
-                    print("\nWeather Data:")
-                    print(tabulate(all_weather_records, headers=[
-                        "Timestamp",
-                        "Temperature",
-                        "Humidity",
-                        "Wind Speed",
-                        "Precipitation",
-                        "Pressure"
-                    ], tablefmt="grid"))
-                elif choice == '2':
-                    plot_precipitation(all_weather_records)
-                else:
-                    print("Invalid choice. Exiting.")
-            else:
-                print("No previous data found or it is empty.")
-
-    # After displaying the weather data
-    # Ask if the user wants to rerun the weather script
-    prompt_rerun(fetch_weather_data)
+        print("No weather records found for the specified period.")
 
 # Start the first fetch
 fetch_weather_data()

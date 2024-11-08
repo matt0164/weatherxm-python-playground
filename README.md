@@ -9,10 +9,13 @@
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
 
 ## Support the Project
-If you'd like to support this project by donating WXM or ETH, you can send your contributions to the following wallet address:
+If you'd like to support this project by donating WXM or ETH, you can send your contributions to the following Arbitrum One wallet address:
 
-Arbitrum Network: 0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa
-Alternatively, [click here to donate directly using MetaMask](https://metamask.app.link/send/0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa?chain=arbitrum).
+0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa
+
+Alternatively, [click here to donate directly using MetaMask](https://metamask.app.link/send/0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa?chain=arbitrum) or scan this QR code:
+
+![Donate to My Project](donate_to_my_project.png)
 
 ### Note
 - Further enhancements will continue to improve user experience and functionality.

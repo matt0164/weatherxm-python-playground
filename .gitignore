@@ -170,3 +170,7 @@ old_settings.py
 old_data_visualization.py
 
 old_fetch_weather_data.py
+
+weather_data.csv
+
+weather_data.xlsx

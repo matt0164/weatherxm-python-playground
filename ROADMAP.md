@@ -25,13 +25,14 @@
 12. **Custom Recommendations**: Suggest clothing or actions based on the most recent hour of data.
 
 # Bug Roadmap
-1. **Data Fetching Bug**: When fetching data for periods longer than 2 days, the API returns repeated data from the last day.
-2. **Unauthorized Access Error Handling**: Ensure that when a 401 error occurs, the application automatically fetches a new API key and retries the request.
-3. **Error in fetching new API key due to missing requests module**: Ensure the requests library is properly imported and available in the environment.
-4. **Error when running fetch_weather_data script from settings.py**: The script raises a `ModuleNotFoundError` for the requests module when executed.
+### The main bug I am aware of is that the settings file doesn't automatically run the script to fetch a new API key. Right now, you need to manually run fetch_api_key before running fetch_weather_data.py. Other bugs: 
+
+1. **Error in fetching new API key due to missing requests module**: Ensure the requests library is properly imported and available in the environment.
+2. **Error when running fetch_weather_data script from settings.py**: The script raises a `ModuleNotFoundError` for the requests module when executed.
+3. **Unauthorized Access Error Handling**: Ensure that when a 401 error occurs, the application automatically fetches a new API key and retries the request.
 
 ## Bug Fixes (2024-11-08)
-- **24 Hours Bug**: Corrected bug which would prevent users from retreiving more than 48 hours of data
+- **Data Fetching Bug**: When fetching data for periods longer than 2 days, the API returns repeated data from the last day.- **24 Hours Bug**: Corrected bug which would prevent users from retreiving more than 48 hours of data
 - **Sort Bug**: Corrected bug to sort data in decending date (most recent first)
 
 ## Bug Fixes (2024-11-04)

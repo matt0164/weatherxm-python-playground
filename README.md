@@ -4,6 +4,16 @@
 
 **See ROADMAP.md for full bug list and feature roadmap
 
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+
+## Support the Project
+If you'd like to support this project by donating WXM or ETH, you can send your contributions to the following wallet address:
+
+Arbitrum Network: 0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa
+Alternatively, [click here to donate directly using MetaMask](https://metamask.app.link/send/0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa?chain=arbitrum).
+
 ### Note
 - Further enhancements will continue to improve user experience and functionality.
 
@@ -116,16 +126,6 @@ Contributions are welcome! If you have any feature requests, bug reports, or gen
 3. Commit your changes (`git commit -am 'Add new feature'`).
 4. Push to the branch (`git push origin feature-branch`).
 5. Create a pull request.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
-
-## Support the Project
-If you'd like to support this project by donating WXM tokens, you can send your contributions to the following wallet address:
-
-WXM Token Donations (Arbitrum Network): 0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa
-Alternatively, [click here to donate directly using MetaMask](https://metamask.app.link/send/0xdB81065a8A9B16FD07765CE0F75CeAc68CE167Fa?chain=arbitrum).
 
 ## Contact
 

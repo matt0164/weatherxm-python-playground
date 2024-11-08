@@ -2,44 +2,7 @@
 
 **WeatherXM Python Playground** is an open-source project designed to interact with WeatherXM's API. It allows users to fetch real-time weather data, retrieve device information, and manage their API keys. The project also includes functionality to configure units for temperature, wind speed, precipitation, and pressure, making it flexible for various use cases.
 
-## Features
-- **Plot Precip**: New feature to plot precipitation and retreive the data from a saved file (for quicker display). Uses matlab.
-- **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format. Automatically re-runs the script with user-defined parameters.
-- **Device Information**: Get detailed information about your WeatherXM station and devices.
-- **API Key Management**: Automatically fetch and manage your WeatherXM API key, with automatic re-fetching if unauthorized.
-- **Unit Settings**: Customize units for temperature (Celsius/Fahrenheit), wind speed (m/s or mph), precipitation (mm or inches), and pressure (hPa or mb).
-- **User-friendly Configuration**: Easily update settings like username, password, device ID, and API key through interactive prompts.
-
-## Bug Fixes (Added 2024-11-04)
-- **24 Hours Bug**: Corrected bug which would prevent users from retreiving more than 48 hours of data
-- **Sort Bug**: Corrected bug to sort data in decending date (most recent first)
-  
-## New Features and Bug Fixes (Added 2024-09-28)
-- **Rerun Option**: After fetching weather data, users are prompted to rerun the script with a custom time period or exit.
-- **Dynamic Time Period Selection**: Users can specify a custom number of hours for weather data retrieval.
-- **Output Method Configuration**: Users can choose to display weather data in the terminal or save it as CSV or Excel.
-- **File Save Location**: Users can specify the file save location through the settings menu.
-- **Automatic API Key Fetching**: If the API key is missing or unauthorized, the script will automatically attempt to fetch a new key without manual intervention.
-- **Default Weather Data**: The program will ask users if they want to run the fetch weather script from the settings.
-- **Test Weather History Duration**: Users can select different time durations for fetching weather history.
-
-### Bug Fixes
-- Improved error handling for API requests.
-- Corrected data extraction from the API response.
-- Fixed output formatting issues in the terminal and CSV/Excel files.
-
-## Pending Items
-
-### Feature Roadmap
-1. **Default Weather Data**: 
-   - **Status**: Pending
-   - **Description**: Ask the user if they want to run the fetch weather script from settings and prompt the user for the time period each time it runs.
-
-2. **Test Weather History Duration**: 
-   - **Status**: Pending
-   - **Description**: Allow users to select days, weeks, months, or years of weather history and set defaults.
-
----
+**See Roadmap.md for full bug list and feature roadmap
 
 ### Note
 - Further enhancements will continue to improve user experience and functionality.

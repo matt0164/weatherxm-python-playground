@@ -3,6 +3,7 @@ import subprocess
 import sys
 import os
 from dotenv import load_dotenv
+import sys
 
 # Load .env file with existing environment variables
 load_dotenv()
@@ -38,8 +39,8 @@ def configure_settings():
         print(f"4. Set Device ID (current: {device_id if device_id else 'Not set'})")
         print(f"5. Change units (temperature: {temperature_unit}, wind: {wind_speed_unit}, precipitation: {precipitation_unit}, pressure: {pressure_unit})")
         print(f"6. Change history range (current: {hours_of_history} hours)")
-        print(f"7. Change file save location (current: {file_save_location})")  # Added file save location option
-        print("8. Run fetch_weather_data script")  # Added option to run fetch_weather_data
+        print(f"7. Change file save location (current: {file_save_location})")  # file save location option
+        print("8. Run the software to fetch weather history")  # option to run fetch_weather_data
         print("9. Save and Exit")
 
         # Ask user what they'd like to update
@@ -62,10 +63,8 @@ def configure_settings():
         elif choice == '7':  # Add file save location change
             configure_file_save_location()
         elif choice == '8':  # Run fetch_weather_data script
-            try:
-                subprocess.run(["python", "fetch_weather_data.py"], check=True)  # Adjust path if needed
-            except subprocess.CalledProcessError as e:
-                print(f"Error running fetch_weather_data script: {e}")
+            # explicitly invoke the correct environment's Python interpreter
+            subprocess.run([sys.executable, "fetch_weather_data.py"], check=True)
         elif choice == '9':
             # Save changes to .env and exit
             update_env_file(username, password, api_key, device_id, temperature_unit, wind_speed_unit,
@@ -138,26 +137,16 @@ def set_hours_history(hours):
 # Function to configure the API key (either manually or by fetching a new one)
 def configure_api_key():
     global api_key
-    print("\nAPI Key Configuration:")
-    print("a. Enter a new API key manually")
-    print("b. Run script to fetch a new API key")
 
-    choice = input("\nEnter 'a' or 'b': ").strip().lower()
+    print("Fetching a new API key. You may need to enter device name..")
 
-    if choice == 'a':
-        api_key = input("Enter your new API key: ").strip()
-    elif choice == 'b':
-        print("Fetching a new API key...")
-        try:
-            subprocess.run(["python", "fetch_api_key.py"], check=True)  # Adjust path if needed
-            # Reload .env after fetching the new key
-            load_dotenv()
-            api_key = os.getenv('WXM_API_KEY')
-            print(f"New API key set: {api_key}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error running fetch_api_key script: {e}")
-    else:
-        print("Invalid option. Returning to main menu.")
+    # explicitly invoke the correct environment's Python interpreter
+    subprocess.run([sys.executable, "fetch_api_key.py"], check=True)
+
+    # Reload .env after fetching the new key
+    load_dotenv()
+    api_key = os.getenv('WXM_API_KEY')
+    print(f"New API key set: {api_key}")
 
 # Function to configure the device ID or wallet address
 def configure_device_id():

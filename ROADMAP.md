@@ -1,12 +1,10 @@
 # WeatherXM Python Playground Feature and Bug Roadmap
 
 ## Bug & Feature Roadmap
-### The main bug I am aware of is that the settings file doesn't automatically run the script to fetch a new API key. Right now, you need to manually run fetch_api_key before running fetch_weather_data.py. 
-### Other bugs: 
 
-1. **Error in fetching new API key due to missing requests module**: Ensure the requests library is properly imported and available in the environment.
-2. **Error when running fetch_weather_data script from settings.py**: The script raises a `ModuleNotFoundError` for the requests module when executed.
-3. **Unauthorized Access Error Handling**: Ensure that when a 401 error occurs, the application automatically fetches a new API key and retries the request.
+### Bugs: 
+
+1. **Unauthorized Access Error Handling**: Ensure that when a 401 error occurs, the application automatically fetches a new API key and retries the request.
 
 ### Current Features
 - **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format. Automatically re-runs the script with user-defined parameters.
@@ -34,6 +32,10 @@
 11. **Documentation Updates**: Regularly update the documentation to reflect new features, changes, and usage examples.
 
 ## Release Notes:
+
+### 2024-11-09 Requests_bug_fix
+-. **Fixed Error in fetching new API key due to missing requests module**: Ensure the requests library is properly imported and available in the environment.
+-. **Fixed Error when running fetch_weather_data script from settings.py**: The script raises a `ModuleNotFoundError` for the requests module when executed.
 
 ### 2024-11-08
 - **Data Fetching Bug**: When fetching data for periods longer than 2 days, the API returns repeated data from the last day.- **24 Hours Bug**: Corrected bug which would prevent users from retreiving more than 48 hours of data

@@ -67,34 +67,81 @@ def load_previous_data():
         return None
 
 # Function to save previous data
-def save_previous_data(weather_records):
-    if weather_records:  # Only save if there are records
-        df = pd.DataFrame(weather_records,
-                          columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
-        df.to_csv('previous_weather_data.csv', index=False)
-        print("Previous data saved to 'previous_weather_data.csv'.")
-    else:
-        print("No records to save.")
+def save_previous_data(new_weather_records):
+    # Ensure new records are provided
+    if not new_weather_records:
+        print("No new records to save.")
+        return
+
+    try:
+        # Load existing data from CSV
+        existing_data = pd.read_csv('previous_weather_data.csv')
+        print("Loaded existing data from 'previous_weather_data.csv'.")
+    except FileNotFoundError:
+        # If the file doesn't exist, create it with the new records
+        existing_data = pd.DataFrame(columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+        print("'previous_weather_data.csv' does not exist. Creating a new file.")
+
+    # Convert new data to DataFrame
+    new_data = pd.DataFrame(new_weather_records, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+
+    # Concatenate new data with existing data
+    combined_data = pd.concat([existing_data, new_data])
+
+    # Drop duplicate records based on the "Timestamp" column
+    combined_data = combined_data.drop_duplicates(subset="Timestamp", keep="last")
+
+    # Sort the data by timestamp for better readability
+    combined_data["Timestamp"] = pd.to_datetime(combined_data["Timestamp"])
+    combined_data = combined_data.sort_values(by="Timestamp")
+
+    # Save the updated data back to the CSV
+    combined_data.to_csv('previous_weather_data.csv', index=False)
+    print("Updated data saved to 'previous_weather_data.csv'.")
 
 # Function to fetch weather data
+from data_visualization_v2 import plot_precipitation
+
+
 def fetch_weather_data(num_hours=None):
+    """
+    Fetches weather data from the API and appends new records to `previous_weather_data.csv`.
+    Updates the precipitation chart after fetching data.
+    """
     if num_hours is None:
         num_hours = get_hours_history()
 
-    all_weather_records = []
-    max_api_hours = 24  # API limitation
-    num_requests = (num_hours + max_api_hours - 1) // max_api_hours  # Ceiling division
+    try:
+        # Load the previous data to determine the latest timestamp
+        existing_data = pd.read_csv('previous_weather_data.csv')
+        latest_timestamp = pd.to_datetime(existing_data['Timestamp']).max()
+        start_date = latest_timestamp + timedelta(seconds=1)  # Start right after the latest timestamp
+        print(f"Starting data fetch from {start_date} based on existing data.")
+    except FileNotFoundError:
+        print("No previous data found. Starting from the default end date.")
+        start_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=num_hours)
 
     end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
+    all_weather_records = []  # Initialize list to hold fetched data
+    max_api_hours = 24  # API limitation
 
-    # Define BASE_URL for the API
+    # Calculate the number of requests needed
+    total_hours = (end_date - start_date).total_seconds() / 3600
+    num_requests = int((total_hours + max_api_hours - 1) // max_api_hours)  # Ceiling division
+
     BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
 
     for request_num in range(num_requests):
         segment_end_date = end_date - timedelta(hours=request_num * max_api_hours)
         segment_start_date = segment_end_date - timedelta(hours=max_api_hours)
-        if segment_start_date < end_date - timedelta(hours=num_hours):
-            segment_start_date = end_date - timedelta(hours=num_hours)
+
+        # Ensure the start date does not go beyond the determined start_date
+        if segment_start_date < start_date:
+            segment_start_date = start_date
+
+        # Stop fetching if we've gone past the start date
+        if segment_end_date <= start_date:
+            break
 
         params = {
             'fromDate': segment_start_date.isoformat(),
@@ -108,49 +155,29 @@ def fetch_weather_data(num_hours=None):
                 'Authorization': f'Bearer {API_KEY}',
                 'Accept': 'application/json'
             }, params=params)
-            print(f"Raw Response: {response.text}")  # Log raw response
             response.raise_for_status()
 
             data = response.json()
-            print(f"Parsed Data: {data}")  # Log parsed data
-
             weather_records = []
 
-            # Handle the response as a list of dictionaries
             if isinstance(data, list):
                 for day_data in data:
                     hourly_data_list = day_data.get('hourly', [])
                     for hourly_data in hourly_data_list:
                         timestamp = hourly_data.get('timestamp')
                         if timestamp:
-                            # Convert precipitation from mm to inches if necessary
-                            precipitation_mm = hourly_data.get('precipitation', 0)
-                            precipitation_in = precipitation_mm / 25.4  # Convert mm to inches
-
                             record = [
                                 timestamp,
                                 hourly_data.get('temperature', 0),
                                 hourly_data.get('humidity', 0),
                                 hourly_data.get('wind_speed', 0),
-                                precipitation_in,  # Use converted precipitation
+                                hourly_data.get('precipitation', 0),
                                 hourly_data.get('pressure', 0)
                             ]
-
                             weather_records.append(record)
             else:
                 print("Unexpected response format. Please verify the API response structure.")
-
-                timestamp = hourly_data.get('timestamp')
-                if timestamp:
-                    record = [
-                        timestamp,
-                        hourly_data.get('temperature', 0),
-                        hourly_data.get('humidity', 0),
-                        hourly_data.get('wind_speed', 0),
-                        hourly_data.get('precipitation', 0),
-                        hourly_data.get('pressure', 0)
-                    ]
-                    weather_records.append(record)
+                return []
 
             if weather_records:
                 all_weather_records.extend(weather_records)
@@ -159,14 +186,30 @@ def fetch_weather_data(num_hours=None):
 
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
+            if response.status_code == 401:
+                print("Unauthorized. Attempting to refresh the API key...")
+                fetch_new_api_key()
+                continue  # Retry the current segment
         except Exception as err:
             print(f"An error occurred: {err}")
 
     if all_weather_records:
         save_previous_data(all_weather_records)
         print("Weather data fetched and saved successfully.")
+
+        # Generate and update the precipitation chart
+        try:
+            print("Updating precipitation chart...")
+            updated_data = pd.read_csv('previous_weather_data.csv')
+            plot_precipitation(updated_data)
+            print("Precipitation chart updated successfully.")
+        except Exception as chart_err:
+            print(f"An error occurred while updating the precipitation chart: {chart_err}")
+
+        return all_weather_records
     else:
         print("No weather records found for the specified period.")
+        return []
 
 # Start the first fetch
 fetch_weather_data()

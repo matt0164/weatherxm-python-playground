@@ -1,215 +1,226 @@
-import requests
 import os
-from dotenv import load_dotenv
+import requests
 from datetime import datetime, timedelta, timezone
-from tabulate import tabulate
-import subprocess
+from dotenv import load_dotenv
 import pandas as pd
-import webbrowser  # Import the webbrowser module
-from data_visualization_v2 import plot_precipitation
+import base64
+import json
 
-# Ensure SAVE_LOCATION is loaded correctly and set a default if not found
-def get_save_location():
-    return os.getenv('FILE_SAVE_LOCATION', os.getcwd())  # Default to current directory if not set
-
-SAVE_LOCATION = get_save_location()  # Set the file save location
-
-def save_to_csv(data):
-    df = pd.DataFrame(data, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
-    file_path = os.path.join(SAVE_LOCATION, 'weather_data.csv')  # Save in the specified directory
-    df.to_csv(file_path, index=False)
-    print(f"Data saved as 'weather_data.csv' at {file_path}.")
-
-# Function to save data as Excel
-def save_to_excel(data):
-    df = pd.DataFrame(data, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
-    file_path = os.path.join(SAVE_LOCATION, 'weather_data.xlsx')  # Save in the specified directory
-    df.to_excel(file_path, index=False)
-    print(f"Data saved as 'weather_data.xlsx' at {file_path}.")
-
-# Load .env file with your API key and device ID
+# Ensure the environment variables are loaded
 load_dotenv()
 
-# Get the WeatherXM API key and device ID from the environment variables
-API_KEY = os.getenv('WXM_API_KEY').strip("'")
-DEVICE_ID = os.getenv('DEVICE_ID').strip("'")
+# Load API_KEY and DEVICE_ID from the .env file
+API_KEY = os.getenv('WXM_API_KEY')
+DEVICE_ID = os.getenv('DEVICE_ID')
 
-# Function to fetch new API key
+def save_to_env(key, value):
+    """
+    Updates or adds a key-value pair in the .env file.
+    Preserves existing values for other keys.
+    """
+    env_vars = {}
+
+    # Read the existing .env file
+    if os.path.exists('.env'):
+        with open('.env', 'r') as file:
+            lines = file.readlines()
+            for line in lines:
+                if "=" in line:
+                    k, v = line.strip().split('=', 1)
+                    env_vars[k] = v
+
+    # Update or add the specific key with the new value
+    env_vars[key] = f"'{value}'"
+
+    # Write all variables back to the .env file
+    with open('.env', 'w') as file:
+        for k, v in env_vars.items():
+            file.write(f"{k}={value}\n")
+
+    print(f"{key} updated in .env.")
+
+try:
+    existing_data = pd.read_csv('previous_weather_data.csv')
+    latest_timestamp = pd.to_datetime(existing_data['Timestamp'], utc=True).max()  # Specify utc=True
+    start_date = latest_timestamp + timedelta(seconds=1)
+except FileNotFoundError:
+    start_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=num_hours)
+
+def get_token_expiration(token):
+    try:
+        payload_encoded = token.split('.')[1]
+        padding = len(payload_encoded) % 4
+        if padding > 0:
+            payload_encoded += '=' * (4 - padding)
+        payload_decoded = base64.urlsafe_b64decode(payload_encoded).decode('utf-8')
+        payload = json.loads(payload_decoded)
+
+        exp_timestamp = payload.get('exp')
+        if exp_timestamp:
+            expiration_date = datetime.fromtimestamp(exp_timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            return expiration_date
+    except Exception as e:
+        print(f"Error decoding token: {e}")
+    return None
+
 def fetch_new_api_key():
-    print("Attempting to fetch a new API key...")
-    try:
-        subprocess.run(["python", "fetch_api_key.py"], check=True)
-        load_dotenv()  # Reload the updated .env file after fetching the key
-        global API_KEY
-        API_KEY = os.getenv('WXM_API_KEY').strip("'")
-        print(f"New API key set: {API_KEY}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error fetching new API key: {e}")
+    """
+    Fetches a new API key directly from the WeatherXM API and updates the .env file.
+    """
+    print("Attempting to fetch a new API key directly...")
+    global API_KEY
 
-# Function to get hours of history from .env file (defaults to 1 hour)
-def get_hours_history():
-    hours = os.getenv('HOURS_OF_HISTORY', '1')  # gets hours of history from .env
-    print(f"Hours of history from .env: {hours}")  # prints hours of history to confirm correct
-    try:
-        return int(hours)
-    except ValueError:
-        print(f"Invalid value for HOURS_OF_HISTORY in .env: {hours}. Defaulting to 1 hour.")
-        return 1
+    LOGIN_URL = "https://api.weatherxm.com/api/v1/auth/login"
+    USERNAME = os.getenv('WXM_USERNAME')
+    PASSWORD = os.getenv('WXM_PASSWORD')
 
-# Function to load previous data
-def load_previous_data():
-    try:
-        df = pd.read_csv('previous_weather_data.csv')
-        print("Loaded previous weather data.")
-        return df
-    except FileNotFoundError:
-        print("No previous data found. Please fetch data first.")
+    if not USERNAME or not PASSWORD:
+        print("Error: Username or password is not set in the environment variables.")
         return None
 
-# Function to save previous data
-def save_previous_data(new_weather_records):
-    # Ensure new records are provided
-    if not new_weather_records:
-        print("No new records to save.")
-        return
+    payload = {
+        "username": USERNAME,
+        "password": PASSWORD
+    }
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
 
     try:
-        # Load existing data from CSV
-        existing_data = pd.read_csv('previous_weather_data.csv')
-        print("Loaded existing data from 'previous_weather_data.csv'.")
-    except FileNotFoundError:
-        # If the file doesn't exist, create it with the new records
-        existing_data = pd.DataFrame(columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
-        print("'previous_weather_data.csv' does not exist. Creating a new file.")
+        # Step 1: Authenticate and fetch API key
+        response = requests.post(LOGIN_URL, json=payload, headers=headers)
+        print("Response status code:", response.status_code)
+        print("Response content:", response.text)
+        response.raise_for_status()
 
-    # Convert new data to DataFrame
-    new_data = pd.DataFrame(new_weather_records, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+        data = response.json()
+        new_api_key = data.get('token')
 
-    # Concatenate new data with existing data
-    combined_data = pd.concat([existing_data, new_data])
+        if not new_api_key:
+            print("Failed to retrieve API key. API response did not contain a token.")
+            return None
 
-    # Drop duplicate records based on the "Timestamp" column
-    combined_data = combined_data.drop_duplicates(subset="Timestamp", keep="last")
+        print(f"New API Key: {new_api_key}")
 
-    # Sort the data by timestamp for better readability
-    combined_data["Timestamp"] = pd.to_datetime(combined_data["Timestamp"])
-    combined_data = combined_data.sort_values(by="Timestamp")
+        # Decode and print API key expiration time (optional)
+        expiration_date = get_token_expiration(new_api_key)
+        if expiration_date:
+            print(f"API key will expire on: {expiration_date}")
 
-    # Save the updated data back to the CSV
-    combined_data.to_csv('previous_weather_data.csv', index=False)
-    print("Updated data saved to 'previous_weather_data.csv'.")
+        # Save the new API key to .env and update the global variable
+        save_to_env('WXM_API_KEY', new_api_key)
+        load_dotenv()  # Reload .env to refresh the global variables
+        API_KEY = new_api_key  # Update global API_KEY
+        print("Successfully fetched and saved a new API key.")
+        return new_api_key
 
-# Function to fetch weather data
-from data_visualization_v2 import plot_precipitation
-
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching the API key: {e}")
+        return None
 
 def fetch_weather_data(num_hours=None):
     """
-    Fetches weather data from the API and appends new records to `previous_weather_data.csv`.
-    Updates the precipitation chart after fetching data.
+    Fetches weather data from the API and updates the records.
     """
     if num_hours is None:
-        num_hours = get_hours_history()
+        num_hours = int(os.getenv('HOURS_OF_HISTORY', 24))
 
     try:
-        # Load the previous data to determine the latest timestamp
         existing_data = pd.read_csv('previous_weather_data.csv')
         latest_timestamp = pd.to_datetime(existing_data['Timestamp']).max()
-        start_date = latest_timestamp + timedelta(seconds=1)  # Start right after the latest timestamp
-        print(f"Starting data fetch from {start_date} based on existing data.")
+        start_date = latest_timestamp + timedelta(seconds=1)
     except FileNotFoundError:
-        print("No previous data found. Starting from the default end date.")
         start_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=num_hours)
 
     end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
-    all_weather_records = []  # Initialize list to hold fetched data
-    max_api_hours = 24  # API limitation
-
-    # Calculate the number of requests needed
-    total_hours = (end_date - start_date).total_seconds() / 3600
-    num_requests = int((total_hours + max_api_hours - 1) // max_api_hours)  # Ceiling division
+    all_weather_records = []
+    max_api_hours = 24
 
     BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
 
-    for request_num in range(num_requests):
+    for request_num in range((num_hours + max_api_hours - 1) // max_api_hours):
         segment_end_date = end_date - timedelta(hours=request_num * max_api_hours)
         segment_start_date = segment_end_date - timedelta(hours=max_api_hours)
 
-        # Ensure the start date does not go beyond the determined start_date
         if segment_start_date < start_date:
             segment_start_date = start_date
 
-        # Stop fetching if we've gone past the start date
         if segment_end_date <= start_date:
             break
 
-        params = {
-            'fromDate': segment_start_date.isoformat(),
-            'toDate': segment_end_date.isoformat()
-        }
-
-        print(f"Fetching data from {params['fromDate']} to {params['toDate']}")
+        params = {'fromDate': segment_start_date.isoformat(), 'toDate': segment_end_date.isoformat()}
 
         try:
-            response = requests.get(BASE_URL, headers={
-                'Authorization': f'Bearer {API_KEY}',
-                'Accept': 'application/json'
-            }, params=params)
+            response = requests.get(
+                BASE_URL,
+                headers={'Authorization': f'Bearer {API_KEY}', 'Accept': 'application/json'},
+                params=params
+            )
             response.raise_for_status()
-
             data = response.json()
-            weather_records = []
 
+            weather_records = []
             if isinstance(data, list):
                 for day_data in data:
                     hourly_data_list = day_data.get('hourly', [])
                     for hourly_data in hourly_data_list:
                         timestamp = hourly_data.get('timestamp')
                         if timestamp:
-                            record = [
+                            weather_records.append([
                                 timestamp,
                                 hourly_data.get('temperature', 0),
                                 hourly_data.get('humidity', 0),
                                 hourly_data.get('wind_speed', 0),
                                 hourly_data.get('precipitation', 0),
                                 hourly_data.get('pressure', 0)
-                            ]
-                            weather_records.append(record)
-            else:
-                print("Unexpected response format. Please verify the API response structure.")
-                return []
-
+                            ])
             if weather_records:
                 all_weather_records.extend(weather_records)
             else:
                 print("No weather data found for this time range.")
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
-            if response.status_code == 401:
-                print("Unauthorized. Attempting to refresh the API key...")
-                fetch_new_api_key()
-                continue  # Retry the current segment
+            if response.status_code == 401:  # Unauthorized
+                print("Unauthorized. Attempting to fetch a new API key...")
+                new_api_key = fetch_new_api_key()
+                if new_api_key:
+                    headers['Authorization'] = f'Bearer {new_api_key}'  # Update the Authorization header
+                    response = requests.get(BASE_URL, headers=headers, params=params)
+                    response.raise_for_status()
+                continue  # Retry the same request with the new API key
+            else:
+                print(f"HTTP error occurred: {http_err}")
         except Exception as err:
             print(f"An error occurred: {err}")
 
     if all_weather_records:
         save_previous_data(all_weather_records)
-        print("Weather data fetched and saved successfully.")
-
-        # Generate and update the precipitation chart
-        try:
-            print("Updating precipitation chart...")
-            updated_data = pd.read_csv('previous_weather_data.csv')
-            plot_precipitation(updated_data)
-            print("Precipitation chart updated successfully.")
-        except Exception as chart_err:
-            print(f"An error occurred while updating the precipitation chart: {chart_err}")
-
         return all_weather_records
     else:
-        print("No weather records found for the specified period.")
+        print("No weather records found.")
         return []
 
-# Start the first fetch
-fetch_weather_data()
+def save_previous_data(new_weather_records):
+    """
+    Updates the previous_weather_data.csv file with new records.
+    """
+    if not new_weather_records:
+        print("No new records to save.")
+        return
+
+    try:
+        existing_data = pd.read_csv('previous_weather_data.csv')
+        latest_timestamp = pd.to_datetime(existing_data['Timestamp'], utc=True).max()
+        start_date = latest_timestamp + timedelta(seconds=1)
+    except FileNotFoundError:
+        start_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=num_hours)
+
+    new_data = pd.DataFrame(new_weather_records, columns=["Timestamp", "Temperature", "Humidity", "Wind Speed", "Precipitation", "Pressure"])
+    combined_data = pd.concat([existing_data, new_data]).drop_duplicates(subset="Timestamp", keep="last").sort_values(by="Timestamp")
+    combined_data.to_csv('previous_weather_data.csv', index=False)
+    print("Updated data saved to 'previous_weather_data.csv'.")
+
+if __name__ == "__main__":
+    fetch_weather_data()

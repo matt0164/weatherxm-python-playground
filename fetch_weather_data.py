@@ -29,8 +29,8 @@ def save_to_env(key, value):
                     k, v = line.strip().split('=', 1)
                     env_vars[k] = v
 
-    # Update or add the specific key with the new value
-    env_vars[key] = f"'{value}'"
+    # Update the API key
+    env_vars["WXM_API_KEY"] = f'"{api_key}"'
 
     # Write all variables back to the .env file
     with open('.env', 'w') as file:
@@ -65,142 +65,108 @@ def get_token_expiration(token):
 
 def fetch_new_api_key():
     """
-    Fetches a new API key directly from the WeatherXM API and updates the .env file.
+    Fetch a new API key directly from the WeatherXM API.
     """
-    print("Attempting to fetch a new API key directly...")
-    global API_KEY
-
-    LOGIN_URL = "https://api.weatherxm.com/api/v1/auth/login"
-    USERNAME = os.getenv('WXM_USERNAME')
-    PASSWORD = os.getenv('WXM_PASSWORD')
-
-    if not USERNAME or not PASSWORD:
-        print("Error: Username or password is not set in the environment variables.")
-        return None
-
-    payload = {
-        "username": USERNAME,
-        "password": PASSWORD
-    }
-
-    headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-    }
-
     try:
-        # Step 1: Authenticate and fetch API key
-        response = requests.post(LOGIN_URL, json=payload, headers=headers)
-        print("Response status code:", response.status_code)
-        print("Response content:", response.text)
+        response = requests.post(
+            "https://api.weatherxm.com/api/v1/auth/login",
+            json={"username": os.getenv("WXM_USERNAME"), "password": os.getenv("WXM_PASSWORD")},
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+        )
         response.raise_for_status()
 
+        # Parse the response and extract the API key
         data = response.json()
-        new_api_key = data.get('token')
+        new_api_key = data.get("token")
 
-        if not new_api_key:
-            print("Failed to retrieve API key. API response did not contain a token.")
-            return None
+        if new_api_key:
+            print(f"New API Key: {new_api_key}")
 
-        print(f"New API Key: {new_api_key}")
+            # Update only the API key in the .env file
+            update_env_file(new_api_key)
+            load_dotenv()  # Reload .env variables to ensure the new key is used
+        else:
+            print("Failed to fetch a new API key. No token found in the response.")
 
-        # Decode and print API key expiration time (optional)
-        expiration_date = get_token_expiration(new_api_key)
-        if expiration_date:
-            print(f"API key will expire on: {expiration_date}")
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred while fetching a new API key: {http_err}")
+    except Exception as e:
+        print(f"An error occurred while fetching a new API key: {e}")
 
-        # Save the new API key to .env and update the global variable
-        save_to_env('WXM_API_KEY', new_api_key)
-        load_dotenv()  # Reload .env to refresh the global variables
-        API_KEY = new_api_key  # Update global API_KEY
-        print("Successfully fetched and saved a new API key.")
-        return new_api_key
-
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred while fetching the API key: {e}")
-        return None
-
-def fetch_weather_data(num_hours=None):
+def fetch_weather_data():
     """
-    Fetches weather data from the API and updates the records.
+    Fetch weather data using the WeatherXM API and save to a local file.
     """
-    if num_hours is None:
-        num_hours = int(os.getenv('HOURS_OF_HISTORY', 24))
+    import requests
+    from datetime import datetime, timedelta
+    import pandas as pd
+    from dotenv import load_dotenv
+    import os
 
-    try:
-        existing_data = pd.read_csv('previous_weather_data.csv')
-        latest_timestamp = pd.to_datetime(existing_data['Timestamp']).max()
-        start_date = latest_timestamp + timedelta(seconds=1)
-    except FileNotFoundError:
-        start_date = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(hours=num_hours)
+    # Load environment variables
+    load_dotenv()
 
-    end_date = datetime.utcnow().replace(tzinfo=timezone.utc)
-    all_weather_records = []
-    max_api_hours = 24
+    API_KEY = os.getenv("WXM_API_KEY")
+    DEVICE_ID = os.getenv("DEVICE_ID")
+    if not API_KEY or not DEVICE_ID:
+        raise ValueError("API key or Device ID is missing. Check your .env file.")
 
     BASE_URL = f"https://api.weatherxm.com/api/v1/me/devices/{DEVICE_ID}/history"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Accept": "application/json",
+    }
 
-    for request_num in range((num_hours + max_api_hours - 1) // max_api_hours):
-        segment_end_date = end_date - timedelta(hours=request_num * max_api_hours)
-        segment_start_date = segment_end_date - timedelta(hours=max_api_hours)
+    # Determine the time range for the API call
+    try:
+        existing_data = pd.read_csv("previous_weather_data.csv")
+        latest_timestamp = pd.to_datetime(existing_data["Timestamp"]).max()
+        start_time = latest_timestamp + pd.Timedelta(seconds=1)
+    except FileNotFoundError:
+        start_time = datetime.utcnow() - timedelta(days=7)
 
-        if segment_start_date < start_date:
-            segment_start_date = start_date
+    end_time = datetime.utcnow()
 
-        if segment_end_date <= start_date:
-            break
+    params = {
+        "fromDate": start_time.isoformat(),
+        "toDate": end_time.isoformat(),
+    }
 
-        params = {'fromDate': segment_start_date.isoformat(), 'toDate': segment_end_date.isoformat()}
+    try:
+        response = requests.get(BASE_URL, headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
 
-        try:
-            response = requests.get(
-                BASE_URL,
-                headers={'Authorization': f'Bearer {API_KEY}', 'Accept': 'application/json'},
-                params=params
-            )
-            response.raise_for_status()
-            data = response.json()
+        if not data:
+            print("No new weather data available.")
+            return
 
-            weather_records = []
-            if isinstance(data, list):
-                for day_data in data:
-                    hourly_data_list = day_data.get('hourly', [])
-                    for hourly_data in hourly_data_list:
-                        timestamp = hourly_data.get('timestamp')
-                        if timestamp:
-                            weather_records.append([
-                                timestamp,
-                                hourly_data.get('temperature', 0),
-                                hourly_data.get('humidity', 0),
-                                hourly_data.get('wind_speed', 0),
-                                hourly_data.get('precipitation', 0),
-                                hourly_data.get('pressure', 0)
-                            ])
-            if weather_records:
-                all_weather_records.extend(weather_records)
-            else:
-                print("No weather data found for this time range.")
+        # Process and save the data
+        save_previous_data(data)
+        print("Weather data fetched and saved successfully.")
 
-        except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 401:  # Unauthorized
-                print("Unauthorized. Attempting to fetch a new API key...")
-                new_api_key = fetch_new_api_key()
-                if new_api_key:
-                    headers['Authorization'] = f'Bearer {new_api_key}'  # Update the Authorization header
-                    response = requests.get(BASE_URL, headers=headers, params=params)
-                    response.raise_for_status()
-                continue  # Retry the same request with the new API key
-            else:
-                print(f"HTTP error occurred: {http_err}")
-        except Exception as err:
-            print(f"An error occurred: {err}")
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        if response.status_code == 401:  # Unauthorized
+            print("Unauthorized. Attempting to fetch a new API key...")
+            try:
+                new_api_key = fetch_new_api_key()  # Function to fetch a new API key
+                headers["Authorization"] = f"Bearer {new_api_key}"  # Update headers with new API key
+                # Retry the request
+                response = requests.get(BASE_URL, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
 
-    if all_weather_records:
-        save_previous_data(all_weather_records)
-        return all_weather_records
-    else:
-        print("No weather records found.")
-        return []
+                if data:
+                    save_previous_data(data)
+                    print("Weather data fetched and saved successfully.")
+                else:
+                    print("No new weather data available.")
+
+            except Exception as e:
+                print(f"An error occurred while fetching the API key: {e}")
+    except Exception as err:
+        print(f"An unexpected error occurred: {err}")
 
 def save_previous_data(new_weather_records):
     """

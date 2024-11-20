@@ -66,20 +66,26 @@ Create a `.env` file in the project root directory. This file will hold your Wea
 
 Example `.env` file:
 ```env
-TEMPERATURE_UNIT=C # gets updated from settings.py
-WIND_SPEED_UNIT=m/s # gets updated from settings.py
-PRECIPITATION_UNIT=mm # gets updated from settings.py
-PRESSURE_UNIT='mb'
+# WeatherXM Configuration
+WXM_USERNAME="youremail@domain.com"
+WXM_PASSWORD="yourpasswordshouldalwaysbeasecret!"
 WXM_API_KEY="your_api_key"
-WXM_USERNAME='youremail@domain.com'
-WXM_PASSWORD='yourpasswordshouldalwaysbeasecret!'
 DEVICE_ID="5f96e380-1c7c-11ed-9972-4f669f2d96bd"
-TEMP_UNIT='F'
-WIND_UNIT='mph'
-PRECIP_UNIT='in'
 STATION_ID="Expert Pecan Twister"
-DAYS_OF_HISTORY='1'
-HOURS_OF_HISTORY='3'
+
+# Units Configuration
+TEMP_UNIT="F"
+WIND_UNIT="mph"
+PRECIP_UNIT="in"
+PRESSURE_UNIT="mb"
+
+# History Configuration
+DAYS_OF_HISTORY="1"
+HOURS_OF_HISTORY="3"
+
+# File Configuration
+FILE_SAVE_LOCATION="."
+
 ```
 
 These values will be automatically updated as you interact with the configuration script.

@@ -4,7 +4,8 @@
 
 ### Bugs: 
 
-1. **Unauthorized Access Error Handling**: Ensure that when a 401 error occurs, the application automatically fetches a new API key and retries the request.
+1. **Unauthorized Access Error Handling**: Ensure that when a 401 error occurs, the application automatically fetches a new API key and retries the request. squashed!
+2. **Historical data**: if you have more than one station, it will not clear the historical data from one when switching to anothrr device 
 
 ### Current Features
 - **Fetch Weather Data**: Retrieve and display real-time weather data in a human-readable format. Automatically re-runs the script with user-defined parameters.

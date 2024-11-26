@@ -3,7 +3,6 @@ import plotly.graph_objects as go
 import os
 from dotenv import load_dotenv
 from settings import get_units
-from settings import configure_plot_period
 from data_fetching import fetch_latest_weather_data
 
 # Load environment variables
@@ -20,7 +19,7 @@ def get_plot_period():
         print(f"Invalid PLOT_PERIOD_HOURS value: {plot_period}. Defaulting to 24 hours.")
         return 24
 
-def plot_precipitation(weather_records, num_hours=get_plot_period()):
+def plot_precipitation(weather_records, num_hours=None):
     """
     Plot precipitation data from weather records using Plotly.
 
@@ -28,6 +27,10 @@ def plot_precipitation(weather_records, num_hours=get_plot_period()):
     - weather_records: List of weather records (dicts) containing precipitation data.
     - num_hours: The number of hours to display data for, determining resampling granularity.
     """
+
+    # Use dynamic or default plotting period
+    if num_hours is None:
+        num_hours = get_plot_period()
 
     # Convert weather_records into a DataFrame for easier manipulation
     df = pd.DataFrame(weather_records,
@@ -38,7 +41,10 @@ def plot_precipitation(weather_records, num_hours=get_plot_period()):
         raise ValueError("No valid data found for precipitation chart.")
 
     # Convert the Timestamp column to datetime
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], utc=True)
+    if 'Timestamp' in df.columns:
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'], utc=True)
+    else:
+        raise ValueError("Missing 'Timestamp' column in data.")
 
     # Convert Precipitation to numeric
     df['Precipitation'] = pd.to_numeric(df['Precipitation'], errors='coerce')
@@ -54,14 +60,17 @@ def plot_precipitation(weather_records, num_hours=get_plot_period()):
     elif precipitation_unit.lower() == 'mm':
         y_axis_title = "Precipitation (mm)"
     else:
-        precipitation_unit = 'mm'
         print("Invalid precipitation unit in settings. Defaulting to 'mm'.")
         y_axis_title = "Precipitation (mm)"
 
+    # Debugging: Print sample data after unit conversion
+    print(f"DEBUG: Sample precipitation data (converted):\n{df[['Timestamp', 'Precipitation']].head()}")
+
     # Resample data for readability if the range is too large
     if num_hours > 1440:  # More than 60 days of data
-        df = df.set_index('Timestamp').resample('D').sum()  # Sum precipitation per day
-        df.reset_index(inplace=True)
+        if 'Timestamp' in df.columns:
+            df = df.set_index('Timestamp').resample('D').sum()  # Sum precipitation per day
+            df.reset_index(inplace=True)
 
     # Create the bar chart
     fig = go.Figure()
@@ -103,4 +112,4 @@ def plot_precipitation(weather_records, num_hours=get_plot_period()):
 
 if __name__ == "__main__":
     weather_records = fetch_latest_weather_data()
-    plot_precipitation(weather_records, num_hours=24)
+    plot_precipitation(weather_records)

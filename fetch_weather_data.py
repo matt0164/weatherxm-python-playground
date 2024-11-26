@@ -1,19 +1,22 @@
-import requests
 import os
-from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
-import subprocess
 import pandas as pd
+from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import subprocess
+import sys
 from data_visualization_v2 import plot_precipitation
 from data_fetching import fetch_latest_weather_data  # Import from new module
-import sys
+
+# Load environment variables
+load_dotenv()
 
 # Ensure SAVE_LOCATION is loaded correctly and set a default if not found
 def get_save_location():
     return os.getenv('FILE_SAVE_LOCATION', os.getcwd())  # Default to current directory if not set
 
-SAVE_LOCATION = get_save_location()  # Set the file save location
+SAVE_LOCATION = get_save_location()
 
+# Utility functions for saving data
 def save_to_csv(data):
     """Save data to a CSV file."""
     try:
@@ -33,16 +36,6 @@ def save_to_excel(data):
         print(f"Data saved as 'weather_data.xlsx' at {file_path}.")
     except Exception as e:
         print(f"Error saving Excel: {e}")
-
-# Load environment variables
-load_dotenv()
-
-# Get the WeatherXM API key and device ID from the environment variables
-API_KEY = os.getenv('WXM_API_KEY', '').strip("'")
-DEVICE_ID = os.getenv('DEVICE_ID', '').strip("'")
-
-if not API_KEY or not DEVICE_ID:
-    raise ValueError("API_KEY or DEVICE_ID is missing in the environment variables.")
 
 # Function to fetch new API key
 def fetch_new_api_key():
@@ -78,9 +71,10 @@ def save_previous_data(weather_records):
     else:
         print("No records to save.")
 
+# Main script execution
 if __name__ == "__main__":
-    # Fetch weather data and save
-    weather_data = fetch_latest_weather_data()
-    save_to_csv(weather_data)
-    save_to_excel(weather_data)
-    plot_precipitation(weather_data, get_hours_history())
+    print("Fetching the latest weather data...")
+    weather_data = fetch_latest_weather_data(num_hours=get_hours_history())  # Fetch data
+    save_to_csv(weather_data)  # Save to CSV
+    save_to_excel(weather_data)  # Save to Excel
+    plot_precipitation(weather_data, num_hours=get_hours_history())  # Plot chart

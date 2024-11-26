@@ -16,6 +16,20 @@ def get_units():
     pressure_unit = os.getenv('PRESSURE_UNIT', 'hPa')  # Default to hPa
     return temperature_unit, wind_speed_unit, precipitation_unit, pressure_unit
 
+def configure_plot_period():
+    """
+    Configure the time period for the precipitation chart in hours.
+    """
+    current_period = os.getenv('PLOT_PERIOD_HOURS', '24')  # Default to 24 hours
+    print(f"Current plot period: {current_period} hours")
+
+    new_period = input("Enter new plot period in hours (e.g., 24, 72, 168 for 1 week): ").strip()
+    if new_period.isdigit():
+        save_to_env('PLOT_PERIOD_HOURS', new_period)  # Save new value to .env
+        print(f"Plot period updated to {new_period} hours.")
+    else:
+        print("Invalid input. Plot period remains unchanged.")
+
 # Function to configure and update user settings
 def configure_settings():
     print("Welcome to the WeatherXM Python Playground Configuration Setup.")
@@ -41,7 +55,8 @@ def configure_settings():
         print(f"6. Change history range (current: {hours_of_history} hours)")
         print(f"7. Change file save location (current: {file_save_location})")  # file save location option
         print("8. Run the software to fetch weather history")  # option to run fetch_weather_data
-        print("9. Save and Exit")
+        print(f"9. Set chart plot period (current: {os.getenv('PLOT_PERIOD_HOURS', '24')} hours)")
+        print("10. Save and Exit")
 
         # Ask user what they'd like to update
         choice = input("\nEnter the number of the setting you'd like to change: ").strip()
@@ -66,6 +81,8 @@ def configure_settings():
             # explicitly invoke the correct environment's Python interpreter
             subprocess.run([sys.executable, "fetch_weather_data.py"], check=True)
         elif choice == '9':
+            configure_plot_period()
+        elif choice == '10':
             # Save changes to .env and exit
             update_env_file(username, password, api_key, device_id, temperature_unit, wind_speed_unit,
                             precipitation_unit, pressure_unit, wallet_address, hours_of_history)

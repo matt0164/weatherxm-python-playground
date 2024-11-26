@@ -3,12 +3,24 @@ import plotly.graph_objects as go
 import os
 from dotenv import load_dotenv
 from settings import get_units
+from settings import configure_plot_period
 from data_fetching import fetch_latest_weather_data
 
 # Load environment variables
 load_dotenv()
 
-def plot_precipitation(weather_records, num_hours):
+def get_plot_period():
+    """
+    Retrieve the chart plotting period from .env.
+    """
+    plot_period = os.getenv('PLOT_PERIOD_HOURS', '24')  # Default to 24 hours
+    try:
+        return int(plot_period)
+    except ValueError:
+        print(f"Invalid PLOT_PERIOD_HOURS value: {plot_period}. Defaulting to 24 hours.")
+        return 24
+
+def plot_precipitation(weather_records, num_hours=get_plot_period()):
     """
     Plot precipitation data from weather records using Plotly.
 

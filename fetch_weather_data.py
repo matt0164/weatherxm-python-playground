@@ -32,8 +32,16 @@ def fetch_weather_data(requested_hours=DEFAULT_HOURS_HISTORY):
 
     # Save new data
     if all_records:
-        save_to_csv(all_records)
-        save_to_excel(all_records)
+        # Save raw data for debugging or reprocessing purposes
+        save_raw_data(all_records)
+
+        # Flatten the aggregated data for tabular storage
+        flattened_data = flatten_data(all_records)
+
+        # Save flattened data to CSV and Excel
+        save_to_csv(flattened_data)
+        save_to_excel(flattened_data)
+
     else:
         print("No new records to save.")
 

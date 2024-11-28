@@ -124,60 +124,38 @@ def configure_history_range():
 
 # Function to set hours of history in the .env file
 def set_hours_history(hours):
-    with open('.env', 'r') as file:
-        lines = file.readlines()
+    """Updates the HOURS_OF_HISTORY value in the .env file."""
+    save_to_env('HOURS_OF_HISTORY', str(hours))
+    print(f"History range set to {hours} hours.")
 
-    with open('.env', 'w') as file:
-        for line in lines:
-            if line.startswith('HOURS_OF_HISTORY'):
-                file.write(f'HOURS_OF_HISTORY={hours}\n')
-            else:
-                file.write(line)
-
-# Function to configure the API key (either manually or by fetching a new one)
+# Function to configure the API key (refresh or update)
 def configure_api_key():
-    global api_key
+    """Fetches a new API key using login_and_get_api_key from api_manager."""
+    from api_manager import login_and_get_api_key
 
-    print("Fetching a new API key. You may need to enter device name..")
-
-    # explicitly invoke the correct environment's Python interpreter
-    subprocess.run([sys.executable, "fetch_api_key.py"], check=True)
-
-    # Reload .env after fetching the new key
-    load_dotenv()
-    api_key = os.getenv('WXM_API_KEY')
-    print(f"New API key set: {api_key}")
-
-# Function to configure the device ID or wallet address
-def configure_device_id():
-    global device_id, wallet_address
-    print("\nDevice ID / Wallet Configuration:")
-    print("a. Enter the device ID manually")
-    print("b. Enter your wallet address to automatically retrieve the device ID")
-
-    choice = input("\nEnter 'a' or 'b': ").strip().lower()
-
-    if choice == 'a':
-        device_id = input("Enter your device ID: ").strip()
-    elif choice == 'b':
-        wallet_address = input("Enter your wallet address: ").strip()
-        # Fetch device ID using wallet address
-        try:
-            print("Fetching device ID using wallet address...")
-            subprocess.run([sys.executable, "get_station_id.py"], check=True)  # Ensures the correct Python interpreter
-            # Reload .env after fetching the device ID
-            load_dotenv()
-            device_id = os.getenv('DEVICE_ID')
-            if device_id:
-                print(f"Device ID set: {device_id}")
-            else:
-                print("Failed to retrieve Device ID. Check the wallet address and try again.")
-        except subprocess.CalledProcessError as e:
-            print(f"Error running get_station_id script: {e}")
+    print("Fetching a new API key...")
+    api_key = login_and_get_api_key()
+    if api_key:
+        save_to_env('WXM_API_KEY', api_key)
+        print(f"New API key set: {api_key}")
     else:
-        print("Invalid option. Returning to main menu.")
+        print("Failed to fetch a new API key.")
 
-# Function to configure units (with a submenu)
+# Function to configure the device ID
+def configure_device_id():
+    """Configures the device ID using fetch_device_id from api_manager."""
+    from api_manager import fetch_device_id
+
+    print("\nDevice ID Configuration:")
+    device_id, station_name = fetch_device_id(os.getenv('WXM_API_KEY'))
+    if device_id:
+        save_to_env('DEVICE_ID', device_id)
+        save_to_env('STATION_ID', station_name)
+        print(f"Device ID set to {device_id} (Station: {station_name})")
+    else:
+        print("Failed to configure Device ID.")
+
+# Function to configure units (unchanged from original)
 def configure_units(temp_unit, wind_unit, precip_unit, pressure_unit):
     while True:
         print("\nUnits Configuration:")
@@ -226,9 +204,10 @@ def save_to_env(key, value):
         for k, v in env_vars.items():
             file.write(f"{k}={v}\n")
 
-# Function to update the .env file while preserving other variables and applying appropriate quotes
+# Function to update the .env file while preserving other variables
 def update_env_file(username, password, api_key, device_id, temp_unit, wind_unit, precip_unit, pressure_unit,
                     wallet_address, hours_of_history):
+    """Batch updates environment variables in the .env file."""
     env_vars = {}
 
     # Read existing environment variables from .env file

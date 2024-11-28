@@ -1,3 +1,4 @@
+# fetch_api_key.py
 import requests
 import os
 from dotenv import load_dotenv
@@ -59,8 +60,8 @@ def update_env_file(new_api_key, device_id, station_id):
     env_vars = {}
 
     # Read existing environment variables from .env file
-    if os.path.exists('.env'):
-        with open('.env', 'r') as file:
+    if os.path.exists('../.env'):
+        with open('../.env', 'r') as file:
             lines = file.readlines()
             for line in lines:
                 if "=" in line:
@@ -73,7 +74,7 @@ def update_env_file(new_api_key, device_id, station_id):
     env_vars['STATION_ID'] = f'"{station_id}"'  # Use double quotes for station ID with spaces
 
     # Write all variables back to the .env file
-    with open('.env', 'w') as file:
+    with open('../.env', 'w') as file:
         for key, value in env_vars.items():
             file.write(f"{key}={value}\n")
 

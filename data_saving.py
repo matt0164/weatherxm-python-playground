@@ -1,4 +1,4 @@
-#data_savings.py
+# data_saving.py
 
 import os
 import json
@@ -6,16 +6,17 @@ import pandas as pd
 import csv
 from datetime import datetime
 
-# Base directory setup
-SAVE_LOCATION = os.getenv('FILE_SAVE_LOCATION', os.getcwd())
-RAW_DIR = os.path.join(SAVE_LOCATION, "data", "raw")
-CSV_DIR = os.path.join(SAVE_LOCATION, "data", "csv")
-CUMULATIVE_CSV = os.path.join(SAVE_LOCATION, "data", "all_weather_data.csv")
+# Define base data directories
+BASE_DIR = os.path.join(os.getcwd(), "data")
+RAW_DIR = os.path.join(BASE_DIR, "raw")
+CSV_DIR = os.path.join(BASE_DIR, "csv")
+EXCEL_DIR = os.path.join(BASE_DIR, "excel")
+CUMULATIVE_CSV = os.path.join(CSV_DIR, "all_weather_data.csv")
 
 # Ensure directories exist
 os.makedirs(RAW_DIR, exist_ok=True)
 os.makedirs(CSV_DIR, exist_ok=True)
-
+os.makedirs(EXCEL_DIR, exist_ok=True)
 
 # Function to save raw JSON data
 def save_raw_data(raw_data, filename=None):
@@ -27,23 +28,26 @@ def save_raw_data(raw_data, filename=None):
         json.dump(raw_data, f, indent=4)
     print(f"Raw data saved to: {file_path}")
 
-
 # Function to flatten data for CSV and Excel
 def flatten_data(json_data):
     """Flattens nested JSON data into tabular format."""
     flattened = []
-    for entry in json_data:
-        flattened.append({
-            'timestamp': entry['timestamp'],
-            'temperature': entry['temperature'],
-            'precipitation_accumulated': entry['precipitation_accumulated'],
-            'wind_speed': entry['wind_speed'],
-            'humidity': entry['humidity'],
-            'pressure': entry['pressure'],
-            'icon': entry.get('icon', ''),  # Handle missing icons
-        })
+    for record in json_data:
+        # Ensure the 'hourly' key exists
+        if 'hourly' in record:
+            for hourly_entry in record['hourly']:
+                flattened.append({
+                    'timestamp': hourly_entry.get('timestamp', None),
+                    'temperature': hourly_entry.get('temperature', None),
+                    'precipitation_accumulated': hourly_entry.get('precipitation_accumulated', None),
+                    'wind_speed': hourly_entry.get('wind_speed', None),
+                    'humidity': hourly_entry.get('humidity', None),
+                    'pressure': hourly_entry.get('pressure', None),
+                    'icon': hourly_entry.get('icon', ''),  # Optional field
+                })
+        else:
+            print(f"Skipping record without 'hourly' data: {record}")
     return flattened
-
 
 # Function to save flattened data to a daily CSV
 def save_to_csv(data, filename=None):
@@ -55,15 +59,13 @@ def save_to_csv(data, filename=None):
     df.to_csv(file_path, index=False)
     print(f"Flattened data saved to: {file_path}")
 
-
 # Function to save flattened data to an Excel file
 def save_to_excel(data, filename="weather_data.xlsx"):
-    """Saves weather data to an Excel file."""
-    file_path = os.path.join(SAVE_LOCATION, filename)
+    """Saves weather data to an Excel file in the data/excel directory."""
+    file_path = os.path.join(EXCEL_DIR, filename)
     df = pd.DataFrame(data)
     df.to_excel(file_path, index=False)
-    print(f"Data saved to: {file_path}")
-
+    print(f"Flattened data saved to: {file_path}")
 
 # Function to append data to a cumulative CSV
 def append_to_cumulative_csv(data):
@@ -79,7 +81,6 @@ def append_to_cumulative_csv(data):
             writer.writeheader()
         writer.writerows(data)
     print(f"Data appended to cumulative CSV: {file_path}")
-
 
 # Example Usage
 if __name__ == "__main__":

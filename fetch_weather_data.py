@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from datetime import timedelta
 from data_loading import load_existing_data, determine_new_data_range
 from api_manager import initialize_api, fetch_data_segment
-from data_saving import save_to_csv, save_to_excel
+from data_saving import save_to_csv, save_to_excel, save_raw_data, flatten_data
 
 # Load environment variables
 load_dotenv()

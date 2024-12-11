@@ -240,5 +240,5 @@ def update_env_file(username, password, api_key, device_id, temp_unit, wind_unit
         for key, value in env_vars.items():
             file.write(f"{key}={value}\n")
 
-if __name__ == "__main__":
-    configure_settings()
+# if __name__ == "__main__":
+#   configure_settings()

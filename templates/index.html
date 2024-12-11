@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Data Summary</title>
+</head>
+<body>
+    <h1>Weather Data Summary</h1>
+
+    <!-- Form to submit weather data request -->
+    <form action="/fetch_weather" method="post">
+        <label for="history">History (in hours):</label>
+        <input type="number" id="history" name="history" min="1" required>
+        <br>
+
+        <label for="temp_unit">Temperature Unit:</label>
+        <select id="temp_unit" name="temp_unit">
+            <option value="C">Celsius</option>
+            <option value="F">Fahrenheit</option>
+        </select>
+        <br>
+
+        <label for="save_csv">Save CSV:</label>
+        <input type="checkbox" id="save_csv" name="save_csv" value="true">
+        <br>
+
+        <label for="save_excel">Save Excel:</label>
+        <input type="checkbox" id="save_excel" name="save_excel" value="true">
+        <br>
+
+        <button type="submit">Fetch Weather Data</button>
+    </form>
+
+    {% if summary %}
+        <h2>Summary for period from {{ summary.start_time }} to {{ summary.end_time }}</h2>
+        <p>Total Records: {{ summary.total_records }}</p>
+        <p>Average Temperature: {{ summary.avg_temperature }}&deg; {{ temp_unit }}</p>
+        <p>Minimum Temperature: {{ summary.min_temperature }}&deg; {{ temp_unit }}</p>
+        <p>Maximum Temperature: {{ summary.max_temperature }}&deg; {{ temp_unit }}</p>
+    {% endif %}
+
+    <h2>Download Data</h2>
+    <form action="/download" method="post">
+        <button type="submit" name="format" value="csv">Download CSV</button>
+        <button type="submit" name="format" value="excel">Download Excel</button>
+        <button type="submit" name="format" value="json">Download JSON</button>
+    </form>
+</body>
+</html>
